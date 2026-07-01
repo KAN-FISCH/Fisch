@@ -1130,37 +1130,48 @@ local function setupGUI()
         end
     })
 
-    MainSection:AddToggle({
+    -- Tabel referensi toggle UI: { ref, configKey, callback }
+    local _uiRefs = {}
+    local function _regToggle(ref, configKey, cb)
+        if ref then _uiRefs[#_uiRefs + 1] = { ref = ref, key = configKey, cb = cb } end
+    end
+    getgenv().__uiRefs = _uiRefs
+
+    local _t = MainSection:AddToggle({
         Title = "Instant Bobber",
         Default = _G.Config.InstantCast,
         Callback = function(value)
             if InstantBobber then InstantBobber(value) end
         end
     })
+    _regToggle(_t, "InstantCast", function(v) if InstantBobber then InstantBobber(v) end end)
 
-    MainSection:AddToggle({
+    local _t = MainSection:AddToggle({
         Title = "Auto Cast",
         Default = _G.Config.AutoCast,
         Callback = function(value)
             if AutoCast then AutoCast(value) end
         end
     })
+    _regToggle(_t, "AutoCast", function(v) if AutoCast then AutoCast(v) end end)
 
-    MainSection:AddToggle({
+    local _t = MainSection:AddToggle({
         Title = "Auto Reel",
         Default = _G.Config.AutoReel,
         Callback = function(value)
             if AutoReel then AutoReel(value) end
         end
     })
+    _regToggle(_t, "AutoReel", function(v) if AutoReel then AutoReel(v) end end)
 
-    MainSection:AddToggle({
+    local _t = MainSection:AddToggle({
         Title = "Auto Equip Rod",
         Default = _G.Config.isEquipRpd,
         Callback = function(value)
             if MiscFishing then MiscFishing.AutoEquipRod(value) end
         end
     })
+    _regToggle(_t, "isEquipRpd", function(v) if MiscFishing then MiscFishing.AutoEquipRod(v) end end)
 
         SettingFish:AddToggle({
         Title = "Auto Pasif Lullaby",
@@ -1224,21 +1235,24 @@ local function setupGUI()
         end
     })
 
-    MainSection:AddToggle({
+    local _t = MainSection:AddToggle({
         Title = "Auto Shake",
         Default = _G.Config.AutoShake or false,
         Callback = function(value)
             if AutoShake then AutoShake(value) end
         end
     })
+    _regToggle(_t, "AutoShake", function(v) if AutoShake then AutoShake(v) end end)
 
-    AutosSection:AddToggle({
+    local _t = AutosSection:AddToggle({
         Title = "Auto Sell",
         Default = _G.Config.AutoSell or false,
         Callback = function(value)
             if AutoSell then AutoSell(value) end
         end
     })
+    _regToggle(_t, "AutoSell", function(v) if AutoSell then AutoSell(v) end end)
+
 
     getgenv().__var = {
         reelConnection = nil,
@@ -1341,6 +1355,29 @@ local function setupGUI()
 
                 getgenv().currentConfigFile = configName
                 getgenv().lastSaveTime = os.time()
+
+                -- Refresh semua toggle UI sesuai nilai config yang baru dimuat
+                task.defer(function()
+                    local refs = getgenv().__uiRefs
+                    if refs then
+                        for _, entry in ipairs(refs) do
+                            local val = _G.Config[entry.key]
+                            if val ~= nil then
+                                pcall(function()
+                                    if entry.ref.Set then
+                                        entry.ref:Set(val)
+                                    elseif entry.ref.SetValue then
+                                        entry.ref:SetValue(val)
+                                    end
+                                end)
+                                -- Jalankan callback agar module aktif
+                                if val == true then
+                                    pcall(entry.cb, val)
+                                end
+                            end
+                        end
+                    end
+                end)
 
                 if autoTeleport and _G.Config.SavedPosition then
                     getgenv().teleportToSavedPosition(_G.Config.SavedPosition)
