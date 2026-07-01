@@ -1365,15 +1365,55 @@ local function setupGUI()
         end)
     end
     if InitExclusive then
-        getgenv().Info = Info
-        getgenv().FishingTab = FishingTab
-        getgenv().ShopTab = ShopTab
-        getgenv().Exclusive = Exclusive
-        getgenv().AutosTab = AutosTab
-        getgenv().AreaTab = AreaTab
-        getgenv().EspTab = EspTab
-        getgenv().Misc = Misc
-        getgenv().SettingsTab = SettingsTab
+        local function patchUI(obj)
+            if type(obj) ~= "table" then return obj end
+            if not obj.AddSeperator then
+                obj.AddSeperator = function() end
+            end
+            if not obj.AddSeparator then
+                obj.AddSeparator = function() end
+            end
+            if obj.AddSection then
+                local oldAddSection = obj.AddSection
+                obj.AddSection = function(self, ...)
+                    local newSec = oldAddSection(self, ...)
+                    if newSec then patchUI(newSec) end
+                    return newSec
+                end
+            end
+            if obj.AddParagraph then
+                local oldAddPara = obj.AddParagraph
+                obj.AddParagraph = function(self, ...)
+                    local para = oldAddPara(self, ...)
+                    if para and not para.SetDesc then
+                        para.SetDesc = function(s, text)
+                            if s.Set then pcall(function() s:Set({Content = text}) end) end
+                        end
+                    end
+                    return para
+                end
+            end
+            return obj
+        end
+
+        getgenv().Info = patchUI(Info)
+        getgenv().FishingTab = patchUI(FishingTab)
+        getgenv().ShopTab = patchUI(ShopTab)
+        getgenv().Exclusive = patchUI(Exclusive)
+        getgenv().AutosTab = patchUI(AutosTab)
+        getgenv().AreaTab = patchUI(AreaTab)
+        getgenv().EspTab = patchUI(EspTab)
+        getgenv().Misc = patchUI(Misc)
+        getgenv().SettingsTab = patchUI(SettingsTab)
+
+        patchUI(ExclusiveSection)
+        patchUI(AutoMineSection)
+        patchUI(AutoSaveSection)
+        patchUI(NPCSection)
+        patchUI(BallonSection)
+        patchUI(EspCharacterSection)
+        patchUI(EspEventSection)
+        patchUI(EspNpcSection)
 
         getgenv().startAutoClaimMulti = function()
             task.spawn(function()
