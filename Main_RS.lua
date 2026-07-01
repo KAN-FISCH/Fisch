@@ -1183,7 +1183,7 @@ local function setupGUI()
         Title = "Perfect Catch %",
         Min = 0,
         Max = 100,
-        Default = 100,
+        Default = 0,
         Callback = function(value)
             if _G.__var then _G.__var.perfectCatchEnabled = value end
         end
@@ -1193,7 +1193,7 @@ local function setupGUI()
         Title = "Perfect Cast %",
         Min = 0,
         Max = 100,
-        Default = 100,
+        Default = 0,
         Callback = function(value)
             if _G.__var then _G.__var.perfectCastEnabled = value end
         end
