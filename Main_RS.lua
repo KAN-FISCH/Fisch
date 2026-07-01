@@ -1111,7 +1111,7 @@ local function setupGUI()
         MainSection:AddDropdown({
         Title = "Reel Mode",
         Options = {"Super Instant", "Legit", "Manual"},
-        Default = _G.Config.ReelMode or "Super Instant",
+        Default = _G.Config.ReelMode,
         Callback = function(value)
             _G.Config.ReelMode = value
         end
@@ -1119,7 +1119,7 @@ local function setupGUI()
 
     MainSection:AddToggle({
         Title = "Instant Bobber",
-        Default = _G.Config.InstantCast or false,
+        Default = _G.Config.InstantCast,
         Callback = function(value)
             if InstantBobber then InstantBobber(value) end
         end
@@ -1127,7 +1127,7 @@ local function setupGUI()
 
     MainSection:AddToggle({
         Title = "Auto Cast",
-        Default = _G.Config.AutoCast or false,
+        Default = _G.Config.AutoCast,
         Callback = function(value)
             if AutoCast then AutoCast(value) end
         end
@@ -1135,7 +1135,7 @@ local function setupGUI()
 
     MainSection:AddToggle({
         Title = "Auto Reel",
-        Default = _G.Config.AutoReel or false,
+        Default = _G.Config.AutoReel,
         Callback = function(value)
             if AutoReel then AutoReel(value) end
         end
@@ -1143,7 +1143,7 @@ local function setupGUI()
 
     MainSection:AddToggle({
         Title = "Auto Equip Rod",
-        Default = _G.Config.isEquipRpd or false,
+        Default = _G.Config.isEquipRpd,
         Callback = function(value)
             if MiscFishing then MiscFishing.AutoEquipRod(value) end
         end
@@ -1151,7 +1151,7 @@ local function setupGUI()
 
         SettingFish:AddToggle({
         Title = "Auto Pasif Lullaby",
-        Default = _G.Config.AutoMetronome or false,
+        Default = _G.Config.AutoMetronome,
         Callback = function(value)
             if MiscFishing then MiscFishing.AutoPasifLullaby(value) end
         end
@@ -1159,7 +1159,7 @@ local function setupGUI()
 
     SettingFish:AddToggle({
         Title = "Delete Fish Model",
-        Default = _G.Config.DeleteFishModel or false,
+        Default = _G.Config.DeleteFishModel,
         Callback = function(value)
             if MiscFishing then MiscFishing.DeleteFishModel(value) end
         end
@@ -1175,7 +1175,7 @@ local function setupGUI()
 
     SettingFish:AddToggle({
         Title = "Delete All Characters",
-        Default = _G.Config.DeletePlayer or false,
+        Default = _G.Config.DeletePlayer,
         Callback = function(value)
             if MiscFishing then MiscFishing.DeleteAllCharacters(value) end
         end
