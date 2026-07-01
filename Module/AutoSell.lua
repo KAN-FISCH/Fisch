@@ -252,7 +252,18 @@ local function AutoSellStorage()
     end)
 end
 
-return {
+local M = {
     AutoSell = AutoSell,
     AutoSellStorage = AutoSellStorage,
 }
+
+setmetatable(M, {
+    __call = function(self, value)
+        _G.Config.AutoSell = value
+        if value then
+            AutoSell()
+        end
+    end
+})
+
+return M

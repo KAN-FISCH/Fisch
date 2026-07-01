@@ -1,6 +1,8 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local activeQuestRunning = false
+
 local function getActiveQuests()
     local quests = {}
     pcall(function()
@@ -35,14 +37,15 @@ local function acceptQuest(questId)
 end
 
 local function AutoQuestLoop()
+    if activeQuestRunning then return end
+    activeQuestRunning = true
     task.spawn(function()
-        while task.wait(5) do
-            if not _G.Config or not _G.Config.AutoQuest then continue end
+        while _G.Config and _G.Config.AutoQuest do
+            task.wait(5)
             pcall(function()
                 local quests = getActiveQuests()
                 for _, quest in ipairs(quests) do
                     local d = quest.data
-                    -- If quest is completed, claim it
                     if d and d.completed then
                         claimQuestReward(quest.id)
                         task.wait(0.5)
@@ -50,16 +53,23 @@ local function AutoQuestLoop()
                 end
             end)
         end
+        activeQuestRunning = false
     end)
 end
 
-local function Init()
-    AutoQuestLoop()
-end
-
-return {
-    Init = Init,
+local AutoQuest = {
     GetActiveQuests = getActiveQuests,
     ClaimQuestReward = claimQuestReward,
     AcceptQuest = acceptQuest,
 }
+
+setmetatable(AutoQuest, {
+    __call = function(self, value)
+        _G.Config.AutoQuest = value
+        if value then
+            AutoQuestLoop()
+        end
+    end
+})
+
+return AutoQuest

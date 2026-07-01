@@ -3,11 +3,14 @@ local CollectionService = game:GetService("CollectionService")
 local LocalPlayer = Players.LocalPlayer
 
 local lastBvTo = Vector3.new()
+local activeVolleyRunning = false
 
 local function AutoVolleyLoop()
+    if activeVolleyRunning then return end
+    activeVolleyRunning = true
     task.spawn(function()
-        while task.wait(0.1) do
-            if not _G.Config or not _G.Config.AutoVolley then continue end
+        while _G.Config and _G.Config.AutoVolley do
+            task.wait(0.1)
             pcall(function()
                 local player = LocalPlayer
                 local char = player.Character
@@ -91,9 +94,18 @@ local function AutoVolleyLoop()
                 end
             end)
         end
+        activeVolleyRunning = false
     end)
 end
 
-return {
-    Start = AutoVolleyLoop,
-}
+local AutoMine = {}
+setmetatable(AutoMine, {
+    __call = function(self, value)
+        _G.Config.AutoVolley = value
+        if value then
+            AutoVolleyLoop()
+        end
+    end
+})
+
+return AutoMine

@@ -86,9 +86,11 @@ local function findWaterSurface(horizontalPos, hrpPos, maxDistance)
     local rayDirection = Vector3.new(0, -200, 0)
     local BOBBER_DEPTH = 1.5
 
+    local filterType = Enum.RaycastFilterType.Exclude
+
     if #cachedFishingParts > 0 then
         local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
+        raycastParams.FilterType = Enum.RaycastFilterType.Include
         raycastParams.FilterDescendantsInstances = cachedFishingParts
         local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
         if result and result.Instance then
@@ -100,7 +102,7 @@ local function findWaterSurface(horizontalPos, hrpPos, maxDistance)
     end
 
     local raycastParams2 = RaycastParams.new()
-    raycastParams2.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams2.FilterType = filterType
     raycastParams2.FilterDescendantsInstances = {LocalPlayer.Character}
     local result2 = workspace:Raycast(rayOrigin, rayDirection, raycastParams2)
     if result2 and result2.Instance then
@@ -157,7 +159,7 @@ local function getTargetPosition(hrp)
     local rayOrigin = Vector3.new(fallbackPos.X, startHeight, fallbackPos.Z)
     local rayDirection = Vector3.new(0, -200, 0)
     local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
     local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
     if result then
@@ -190,9 +192,17 @@ local function instantTeleportBobber(bobber, targetCFrame, hrp)
     end)
 end
 
-return {
+local InstantBobber = {
     GetTargetPosition = getTargetPosition,
     InstantTeleportBobber = instantTeleportBobber,
     LockBobberPhysics = lockBobberPhysics,
     EnsureCache = ensureCache,
 }
+
+setmetatable(InstantBobber, {
+    __call = function(self, value)
+        _G.Config.InstantCast = value
+    end
+})
+
+return InstantBobber

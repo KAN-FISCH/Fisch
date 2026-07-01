@@ -283,6 +283,7 @@ end
 local AutoReel = {}
 setmetatable(AutoReel, {
     __call = function(self, value)
+        _G.Config.AutoReel = value
         _G.Config.InstantReel = value
     end
 })
