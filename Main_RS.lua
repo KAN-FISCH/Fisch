@@ -1215,11 +1215,31 @@ local function setupGUI()
         end
     })
 
-    AutoMineSection:AddToggle({
-        Title = "Auto Mine Dripstone",
-        Default = _G.Config.AutoMineDripstone or false,
+    local InitExclusive = loadstring(game:HttpGet("https://raw.githubusercontent.com/ShielDTeam/ShielDTeam/refs/heads/main/NewFish5_Source/Modules/Exclusive.lua"))
+    if not InitExclusive then
+        pcall(function()
+            InitExclusive = require(script.Parent.Modules.Exclusive)
+        end)
+    end
+    if InitExclusive then
+        InitExclusive(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSection, BallonSection, EspCharacterSection, EspEventSection, EspNpcSection)
+    end
+
+    ExclusiveSection:AddButton({
+        Title = "Save Config",
+        Callback = function()
+            local HttpService = game:GetService("HttpService")
+            pcall(function()
+                writefile("ShieldTeamConfig.json", HttpService:JSONEncode(_G.Config))
+            end)
+        end
+    })
+
+    ExclusiveSection:AddToggle({
+        Title = "Auto Sell",
+        Default = _G.Config.AutoSell or false,
         Callback = function(value)
-            if AutoMine then AutoMine(value) end
+            if AutoSell then AutoSell(value) end
         end
     })
 
