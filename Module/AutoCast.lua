@@ -2,12 +2,26 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Helper getMod loader
+-- Helper getMod loader (no script dependency)
 local function getMod(name)
-    local success, result = pcall(function()
-        return require(script.Parent:FindFirstChild(name))
-    end)
-    return success and result or nil
+    if _G.getMod then return _G.getMod(name) end
+    local core = game:GetService("ReplicatedStorage"):FindFirstChild("Shield_Core")
+    if core then
+        local folder = core:FindFirstChild(name)
+        if folder then
+            if folder:IsA("Folder") then
+                local src = ""
+                for i = 1, #folder:GetChildren() do
+                    local chunk = folder:FindFirstChild(tostring(i))
+                    if chunk then src = src .. chunk.Value end
+                end
+                return loadstring(src)()
+            else
+                return loadstring(folder.Value)()
+            end
+        end
+    end
+    return nil
 end
 
 local STATE_CAST = "CAST"

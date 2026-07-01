@@ -1,30 +1,26 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
--- Helper getMod loader
+-- Helper getMod loader (no script dependency)
 local function getMod(name)
-    local storageFolder = ReplicatedStorage:FindFirstChild("Shield_Core")
-    if storageFolder then
-        local val = storageFolder:FindFirstChild(name)
-        if val then
-            if val:IsA("Folder") then
-                local fullSrc = ""
-                local count = #val:GetChildren()
-                for i = 1, count do
-                    local chunk = val:FindFirstChild(tostring(i))
-                    if chunk then fullSrc = fullSrc .. chunk.Value end
+    if _G.getMod then return _G.getMod(name) end
+    local core = game:GetService("ReplicatedStorage"):FindFirstChild("Shield_Core")
+    if core then
+        local folder = core:FindFirstChild(name)
+        if folder then
+            if folder:IsA("Folder") then
+                local src = ""
+                for i = 1, #folder:GetChildren() do
+                    local chunk = folder:FindFirstChild(tostring(i))
+                    if chunk then src = src .. chunk.Value end
                 end
-                return loadstring(fullSrc)()
+                return loadstring(src)()
             else
-                return loadstring(val.Value)()
+                return loadstring(folder.Value)()
             end
         end
     end
-    -- Fallback to local files
-    local success, result = pcall(function()
-        return require(script.Parent:FindFirstChild(name))
-    end)
-    return success and result or nil
+    return nil
 end
 
 local function Init(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSection, BallonSection, EspCharacterSection, EspEventSection, EspNpcSection)
