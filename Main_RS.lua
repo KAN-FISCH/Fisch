@@ -47,6 +47,7 @@ local AutoQuest = getMod("AutoQuest")
 local WalkSpeed = getMod("WalkSpeed")
 local MiscFishing = getMod("MiscFishing")
 local DisableOxygen = getMod("DisableOxygen")
+local AntiAFK = getMod("AntiAFK")
 
 local executorName = Utils and Utils.DetectExecutor() or "Unknown"
 
@@ -1219,9 +1220,10 @@ local function setupGUI()
         Title = "Perfect Catch %",
         Min = 0,
         Max = 100,
-        Default = 0,
+        Default = _G.Config.perfectCatchEnabled or 100,
         Callback = function(value)
-            if _G.__var then _G.__var.perfectCatchEnabled = value end
+            _G.Config.perfectCatchEnabled = value
+            _G.Config.PerfectCatchChance = value
         end
     })
 
@@ -1229,9 +1231,9 @@ local function setupGUI()
         Title = "Perfect Cast %",
         Min = 0,
         Max = 100,
-        Default = 0,
+        Default = _G.Config.perfectCastEnabled or 100,
         Callback = function(value)
-            if _G.__var then _G.__var.perfectCastEnabled = value end
+            _G.Config.perfectCastEnabled = value
         end
     })
 
@@ -1566,6 +1568,14 @@ local function setupGUI()
             pcall(function()
                 writefile("ShieldTeamConfig.json", HttpService:JSONEncode(_G.Config))
             end)
+        end
+    })
+
+    ExclusiveSection:AddToggle({
+        Title = "Anti AFK",
+        Default = _G.Config.AntiAFK or false,
+        Callback = function(value)
+            if AntiAFK then AntiAFK(value) end
         end
     })
 
