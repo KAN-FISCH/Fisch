@@ -9,7 +9,19 @@ end
 local function getMod(name)
     local val = storageFolder:FindFirstChild(name)
     if val then
-        return loadstring(val.Value)()
+        if val:IsA("Folder") then
+            local fullSrc = ""
+            local count = #val:GetChildren()
+            for i = 1, count do
+                local chunk = val:FindFirstChild(tostring(i))
+                if chunk then
+                    fullSrc = fullSrc .. chunk.Value
+                end
+            end
+            return loadstring(fullSrc)()
+        else
+            return loadstring(val.Value)()
+        end
     else
         warn("[NewFish5] Missing module:", name)
     end
@@ -1215,7 +1227,7 @@ local function setupGUI()
         end
     })
 
-    local InitExclusive = loadstring(game:HttpGet("https://raw.githubusercontent.com/ShielDTeam/ShielDTeam/refs/heads/main/NewFish5_Source/Modules/Exclusive.lua"))
+    local InitExclusive = getMod("Exclusive")
     if not InitExclusive then
         pcall(function()
             InitExclusive = require(script.Parent.Modules.Exclusive)
