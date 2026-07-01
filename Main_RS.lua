@@ -1272,6 +1272,29 @@ local function setupGUI()
         return true
     end
 
+    getgenv().deepCopy = function(original)
+        if type(original) ~= "table" then
+            return original
+        end
+        local copy = {}
+        for key, value in pairs(original) do
+            local typeKey = type(key)
+            local typeVal = type(value)
+
+            if typeKey == "string" or typeKey == "number" then
+                if typeKey == "string" and key:match("^<Function>") then
+                else
+                    if typeVal == "table" then
+                        copy[key] = getgenv().deepCopy(value)
+                    elseif typeVal == "string" or typeVal == "number" or typeVal == "boolean" then
+                        copy[key] = value
+                    end
+                end
+            end
+        end
+        return copy
+    end
+
     getgenv().loadConfig = function(configName, autoTeleport)
         configName = configName or getgenv().currentConfigFile
         if autoTeleport == nil then 
