@@ -1358,100 +1358,62 @@ local function setupGUI()
         end
     end
 
-    local modulesToLoad = {
-        "AutoCosmic",
-        "AutoMinigames",
-        "AutoHop",
-        "AutoPotion",
-        "AutoConfig",
-        "AutoStorage",
-        "MiscFeatures"
-    }
-
-    local loadedModules = {}
-    for _, modName in ipairs(modulesToLoad) do
-        local mod = getMod(modName)
-        if not mod then
-            pcall(function()
-                mod = require(script.Parent.Modules[modName])
-            end)
-        end
-        if type(mod) == "function" then
-            table.insert(loadedModules, mod)
-        end
+    local InitExclusive = getMod("Exclusive")
+    if not InitExclusive then
+        pcall(function()
+            InitExclusive = require(script.Parent.Modules.Exclusive)
+        end)
     end
-
-    if #loadedModules > 0 then
-        local function createProxy(obj)
-            if type(obj) ~= "table" and type(obj) ~= "userdata" then return obj end
-            return setmetatable({}, {
-                __index = function(_, k)
-                    if k == "AddSeperator" or k == "AddSeparator" then
-                        return function(self, args)
-                            pcall(function()
-                                if obj.AddParagraph then
-                                    obj:AddParagraph({Title = args.Title or "", Content = ""})
-                                end
-                            end)
-                        end
-                    end
-                    if k == "AddInput" then
-                        return function(self, args)
-                            local s, r = pcall(function()
-                                if obj.AddInput then return obj:AddInput(args) end
-                                if obj.AddTextbox then return obj:AddTextbox(args) end
-                                if obj.AddTextBox then return obj:AddTextBox(args) end
-                            end)
-                            if type(r) == "table" or type(r) == "userdata" then return createProxy(r) end
-                            return r
-                        end
-                    end
-                    if k == "SetDesc" then
-                        return function(self, text)
-                            pcall(function()
-                                if obj.Set then obj:Set({Content = text}) end
-                            end)
-                        end
-                    end
-                    
-                    local val = obj[k]
-                    if type(val) == "function" then
-                        return function(self, ...)
-                            local args = {...}
-                            local s, r = pcall(function() return val(obj, unpack(args)) end)
-                            if not s then return nil end
-                            if type(r) == "table" or type(r) == "userdata" then
-                                return createProxy(r)
-                            end
-                            return r
-                        end
-                    end
-                    return val
-                end,
-                __newindex = function(_, k, v)
-                    pcall(function() obj[k] = v end)
+    if InitExclusive then
+        local function patchUI(obj)
+            if type(obj) ~= "table" then return obj end
+            if not obj.AddSeperator then
+                obj.AddSeperator = function() end
+            end
+            if not obj.AddSeparator then
+                obj.AddSeparator = function() end
+            end
+            if obj.AddSection then
+                local oldAddSection = obj.AddSection
+                obj.AddSection = function(self, ...)
+                    local newSec = oldAddSection(self, ...)
+                    if newSec then patchUI(newSec) end
+                    return newSec
                 end
-            })
+            end
+            if obj.AddParagraph then
+                local oldAddPara = obj.AddParagraph
+                obj.AddParagraph = function(self, ...)
+                    local para = oldAddPara(self, ...)
+                    if para and not para.SetDesc then
+                        para.SetDesc = function(s, text)
+                            if s.Set then pcall(function() s:Set({Content = text}) end) end
+                        end
+                    end
+                    return para
+                end
+            end
+            return obj
         end
 
-        getgenv().Info = createProxy(Info)
-        getgenv().FishingTab = createProxy(FishingTab)
-        getgenv().ShopTab = createProxy(ShopTab)
-        getgenv().Exclusive = createProxy(Exclusive)
-        getgenv().AutosTab = createProxy(AutosTab)
-        getgenv().AreaTab = createProxy(AreaTab)
-        getgenv().EspTab = createProxy(EspTab)
-        getgenv().Misc = createProxy(Misc)
-        getgenv().SettingsTab = createProxy(SettingsTab)
+        getgenv().Info = patchUI(Info)
+        getgenv().FishingTab = patchUI(FishingTab)
+        getgenv().ShopTab = patchUI(ShopTab)
+        getgenv().Exclusive = patchUI(Exclusive)
+        getgenv().AutosTab = patchUI(AutosTab)
+        getgenv().AreaTab = patchUI(AreaTab)
+        getgenv().EspTab = patchUI(EspTab)
+        getgenv().Misc = patchUI(Misc)
+        getgenv().SettingsTab = patchUI(SettingsTab)
 
-        local pExclusiveSection = createProxy(ExclusiveSection)
-        local pAutoMineSection = createProxy(AutoMineSection)
-        local pAutoSaveSection = createProxy(AutoSaveSection)
-        local pNPCSection = createProxy(NPCSection)
-        local pBallonSection = createProxy(BallonSection)
-        local pEspCharacterSection = createProxy(EspCharacterSection)
-        local pEspEventSection = createProxy(EspEventSection)
-        local pEspNpcSection = createProxy(EspNpcSection)
+        patchUI(ExclusiveSection)
+        patchUI(AutoMineSection)
+        patchUI(AutoSaveSection)
+        patchUI(NPCSection)
+        patchUI(BallonSection)
+        patchUI(EspCharacterSection)
+        patchUI(EspEventSection)
+        patchUI(EspNpcSection)
 
         getgenv().startAutoClaimMulti = function()
             task.spawn(function()
@@ -1544,18 +1506,7 @@ local function setupGUI()
             end)
         end
 
-        for _, initMod in ipairs(loadedModules) do
-            pcall(function()
-                local env = getfenv(initMod)
-                env.teleportToSavedPosition = getgenv().teleportToSavedPosition
-                env.deepCopy = getgenv().deepCopy
-                env.startAutoClaimMulti = getgenv().startAutoClaimMulti
-            end)
-            
-            pcall(function()
-                initMod(pExclusiveSection, pAutoMineSection, pAutoSaveSection, pNPCSection, pBallonSection, pEspCharacterSection, pEspEventSection, pEspNpcSection)
-            end)
-        end
+        InitExclusive(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSection, BallonSection, EspCharacterSection, EspEventSection, EspNpcSection)
     end
 
     ExclusiveSection:AddButton({
