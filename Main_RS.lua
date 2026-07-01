@@ -1109,6 +1109,18 @@ local function setupGUI()
     local SettingsSection = SettingsTab:AddSection("Settings", true, "Left")
     local CreditsSection  = SettingsTab:AddSection("Credits", true, "Right")
 
+    MainSection:AddSlider({
+        Title = "Bobber Depth",
+        Description = "Seberapa dalam bobber di bawah kaki (semakin besar = semakin dalam)",
+        Min = 3,
+        Max = 15,
+        Default = math.clamp(_G.Config.BobberDepth or 10, 3, 15),
+        Rounding = 0,
+        Callback = function(value)
+            _G.Config.BobberDepth = value
+        end
+    })
+
         MainSection:AddDropdown({
         Title = "Reel Mode",
         Options = {"Super Instant", "Legit", "Manual"},

@@ -11,6 +11,7 @@ _G.Config = {
     SelectedDayTotems = {},
     AutoReel = false,
     InstantReel = false,
+    BobberDepth = 10,
     AutoPerfectCatch = false,
     selectedZone = "None",
     ShakeDelay = 0.26,
