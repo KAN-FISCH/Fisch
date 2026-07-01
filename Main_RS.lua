@@ -1375,6 +1375,97 @@ local function setupGUI()
         getgenv().Misc = Misc
         getgenv().SettingsTab = SettingsTab
 
+        getgenv().startAutoClaimMulti = function()
+            task.spawn(function()
+                while _G.Config.AutoClaimMulti do
+                    local player = game.Players.LocalPlayer
+                    local char = player.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if not hrp then task.wait(2) continue end
+                    
+                    local oldCFrame = hrp.CFrame
+                    local itemsClaimed = false
+                    local targetItems = {"Lunar Thread", "Starfall Totem", "Cosmic Relic", "Meteoric"}
+
+                    local function searchForItems(parent, depth)
+                        if depth > 10 then return false end
+
+                        for _, child in ipairs(parent:GetChildren()) do
+                            if not _G.Config.AutoClaimMulti then return false end
+                            for _, itemName in ipairs(targetItems) do
+                                if child.Name == itemName then
+                                    local prompt = nil
+                                    local targetPosition = nil
+                                    local center = child:FindFirstChild("Center")
+                                    if center then
+                                        for _, centerChild in ipairs(center:GetChildren()) do
+                                            if centerChild:IsA("ProximityPrompt") and centerChild.Enabled then
+                                                prompt = centerChild
+                                                break
+                                            end
+                                        end
+                                    end
+                                    if not prompt then
+                                        for _, itemChild in ipairs(child:GetChildren()) do
+                                            if itemChild:IsA("ProximityPrompt") and itemChild.Enabled then
+                                                prompt = itemChild
+                                                break
+                                            end
+                                        end
+                                    end
+                                    if child:IsA("BasePart") then
+                                        targetPosition = child.CFrame
+                                    elseif child:IsA("Model") and child.PrimaryPart then
+                                        targetPosition = child.PrimaryPart.CFrame
+                                    elseif child:IsA("Model") then
+                                        for _, modelChild in ipairs(child:GetChildren()) do
+                                            if modelChild:IsA("BasePart") then
+                                                targetPosition = modelChild.CFrame
+                                                break
+                                            end
+                                        end
+                                    end
+                                    if prompt and targetPosition then
+                                        print("Teleporting to claim " .. itemName .. "...")
+                                        hrp.CFrame = targetPosition + Vector3.new(0, 3, 0)
+                                        task.wait(0.5)
+                                        local claimAttempts = 0
+                                        while _G.Config.AutoClaimMulti and prompt and prompt.Parent and prompt.Enabled and claimAttempts < 10 do
+                                            pcall(function()
+                                                fireproximityprompt(prompt)
+                                            end)
+                                            task.wait(0.2)
+                                            claimAttempts = claimAttempts + 1
+                                        end
+
+                                        if not prompt.Enabled then
+                                            print("Successfully claimed " .. itemName .. "!")
+                                            itemsClaimed = true
+                                        end
+
+                                        task.wait(0.5)
+                                    end
+                                end
+                            end
+                            if child:IsA("Folder") or child:IsA("Model") or child.Name == "StarCrater" or child.Name == "Root" then
+                                if searchForItems(child, depth + 1) then
+                                    itemsClaimed = true
+                                end
+                            end
+                        end
+                        return itemsClaimed
+                    end
+                    
+                    searchForItems(workspace, 0)
+                    if _G.Config.AutoClaimMulti and itemsClaimed and hrp then
+                        hrp.CFrame = oldCFrame
+                        print("Returned to original position")
+                    end
+                    task.wait(2)
+                end
+            end)
+        end
+
         InitExclusive(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSection, BallonSection, EspCharacterSection, EspEventSection, EspNpcSection)
     end
 
