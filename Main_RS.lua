@@ -1473,11 +1473,10 @@ local function setupGUI()
                     local player = game.Players.LocalPlayer
                     local char = player.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if not hrp then task.wait(2) continue end
-                    
-                    local oldCFrame = hrp.CFrame
-                    local itemsClaimed = false
-                    local targetItems = {"Lunar Thread", "Starfall Totem", "Cosmic Relic", "Meteoric"}
+                    if hrp then
+                        local oldCFrame = hrp.CFrame
+                        local itemsClaimed = false
+                        local targetItems = {"Lunar Thread", "Starfall Totem", "Cosmic Relic", "Meteoric"}
 
                     local function searchForItems(parent, depth)
                         if depth > 10 then return false end
@@ -1553,7 +1552,9 @@ local function setupGUI()
                         hrp.CFrame = oldCFrame
                         print("Returned to original position")
                     end
-                    task.wait(2)
+                    else
+                        task.wait(2)
+                    end
                 end
             end)
         end
