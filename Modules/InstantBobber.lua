@@ -2,10 +2,11 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Posisi target: langsung di bawah kaki karakter (Y - 3)
+-- Posisi target: langsung di bawah kaki karakter (Y - BobberDepth)
 local function GetTargetPosition(hrp)
     local pos = hrp.Position
-    return CFrame.new(pos.X, pos.Y - 40, pos.Z)
+    local depth = (_G.Config and type(_G.Config.BobberDepth) == "number") and _G.Config.BobberDepth or 10
+    return CFrame.new(pos.X, pos.Y - depth, pos.Z)
 end
 
 -- Teleport bobber ke posisi target + zero velocity
