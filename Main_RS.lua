@@ -32,6 +32,7 @@ local ESP = getMod("ESP")
 local AutoMine = getMod("AutoMine")
 local AutoQuest = getMod("AutoQuest")
 local WalkSpeed = getMod("WalkSpeed")
+local MiscFishing = getMod("MiscFishing")
 local DisableOxygen = getMod("DisableOxygen")
 
 local executorName = Utils and Utils.DetectExecutor() or "Unknown"
@@ -113,6 +114,15 @@ local function setupGUI()
     local SettingsSection = SettingsTab:AddSection("Settings", true, "Left")
     local CreditsSection  = SettingsTab:AddSection("Credits", true, "Right")
 
+        MainSection:AddDropdown({
+        Title = "Reel Mode",
+        Values = {"Super Instant", "Instant", "Legit", "5 Notif", "Manual"},
+        Default = _G.Config.ReelMode or "Super Instant",
+        Callback = function(value)
+            _G.Config.ReelMode = value
+        end
+    })
+
     MainSection:AddToggle({
         Title = "Instant Bobber",
         Default = _G.Config.InstantCast or false,
@@ -134,6 +144,64 @@ local function setupGUI()
         Default = _G.Config.AutoReel or false,
         Callback = function(value)
             if AutoReel then AutoReel(value) end
+        end
+    })
+
+        MainSection:AddToggle({
+        Title = "No Action Safe",
+        Default = _G.Config.NoActionSafe or false,
+        Callback = function(value)
+            if MiscFishing then MiscFishing.NoActionSafe(value) end
+        end
+    })
+
+    MainSection:AddToggle({
+        Title = "Auto Equip Rod",
+        Default = _G.Config.isEquipRpd or false,
+        Callback = function(value)
+            if MiscFishing then MiscFishing.AutoEquipRod(value) end
+        end
+    })
+
+        SettingFish:AddToggle({
+        Title = "Auto Pasif Lullaby",
+        Default = _G.Config.AutoMetronome or false,
+        Callback = function(value)
+            if MiscFishing then MiscFishing.AutoPasifLullaby(value) end
+        end
+    })
+
+    SettingFish:AddToggle({
+        Title = "Delete Fish Model",
+        Default = _G.Config.DeleteFishModel or false,
+        Callback = function(value)
+            if MiscFishing then MiscFishing.DeleteFishModel(value) end
+        end
+    })
+
+    SettingFish:AddToggle({
+        Title = "Delete All Map",
+        Default = false,
+        Callback = function(value)
+            if MiscFishing then MiscFishing.DeleteAllMap(value) end
+        end
+    })
+
+    SettingFish:AddToggle({
+        Title = "Delete All Characters",
+        Default = _G.Config.DeletePlayer or false,
+        Callback = function(value)
+            if MiscFishing then MiscFishing.DeleteAllCharacters(value) end
+        end
+    })
+
+    SettingFish:AddSlider({
+        Title = "Bar Size",
+        Min = 1,
+        Max = 20,
+        Default = 5,
+        Callback = function(value)
+            if _G.__var then _G.__var.barSize = value end
         end
     })
 
@@ -204,3 +272,4 @@ end
 
 setupGUI()
 print("[NewFish5] GUI Loaded Successfully from ReplicatedStorage!")
+
