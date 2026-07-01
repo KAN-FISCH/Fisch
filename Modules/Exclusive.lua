@@ -279,6 +279,8 @@ local function Init(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSecti
     -- Config Saver (AutoSaveSection)
     local HttpService = game:GetService("HttpService")
     local configFolder = "ExclusiveConfigs/"
+    local autoSaveThread = nil
+
     local function getConfigs()
         local list = {"Default"}
         if isfolder and isfolder(configFolder) and listfiles then
@@ -299,6 +301,50 @@ local function Init(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSecti
         end
     end
 
+    local function doSave()
+        if not isfolder(configFolder) then makefolder(configFolder) end
+        pcall(function()
+            writefile(configFolder .. selectedConfig .. ".json", HttpService:JSONEncode(_G.Config))
+        end)
+    end
+
+    local function startAutoSave(interval)
+        if autoSaveThread then task.cancel(autoSaveThread) end
+        autoSaveThread = task.spawn(function()
+            while _G.Config.AutoSaveEnabled do
+                task.wait(interval)
+                if _G.Config.AutoSaveEnabled then doSave() end
+            end
+        end)
+    end
+
+    -- Toggle Auto Save
+    AutoSaveSection:AddToggle({
+        Title = "Auto Save",
+        Description = "Simpan config otomatis setiap interval",
+        Default = _G.Config.AutoSaveEnabled or false,
+        Callback = function(state)
+            _G.Config.AutoSaveEnabled = state
+            if state then
+                local interval = type(_G.Config.AutoSaveInterval) == "number" and _G.Config.AutoSaveInterval or 60
+                startAutoSave(interval)
+            else
+                if autoSaveThread then task.cancel(autoSaveThread); autoSaveThread = nil end
+            end
+        end
+    })
+    AutoSaveSection:AddSlider({
+        Title = "Save Interval (detik)",
+        Default = _G.Config.AutoSaveInterval or 60,
+        Min = 10,
+        Max = 300,
+        Rounding = 0,
+        Callback = function(val)
+            _G.Config.AutoSaveInterval = val
+            -- Restart jika sedang aktif
+            if _G.Config.AutoSaveEnabled then startAutoSave(val) end
+        end
+    })
     AutoSaveSection:AddInput({
         Title = "Config Name",
         Default = "Default",
@@ -317,8 +363,7 @@ local function Init(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSecti
     AutoSaveSection:AddButton({
         Title = "Save Config",
         Callback = function()
-            if not isfolder(configFolder) then makefolder(configFolder) end
-            writefile(configFolder .. selectedConfig .. ".json", HttpService:JSONEncode(_G.Config))
+            doSave()
             refreshConfigs()
         end
     })
@@ -326,13 +371,22 @@ local function Init(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSecti
         Title = "Load Config",
         Callback = function()
             local path = configFolder .. selectedConfig .. ".json"
-            if isfile(path) then
-                local data = HttpService:JSONDecode(readfile(path))
-                if type(data) == "table" then
-                    for k, v in pairs(data) do
+            if isfile and isfile(path) then
+                local ok, data = pcall(function()
+                    return HttpService:JSONDecode(readfile(path))
+                end)
+                if ok and type(data) == "table" then
+                    -- Support format lama (flat) dan format baru ({Config=...})
+                    local cfg = data.Config or data
+                    for k, v in pairs(cfg) do
                         _G.Config[k] = v
                     end
-                    print("Config loaded:", selectedConfig)
+                    print("[NewFish5] Config loaded:", selectedConfig)
+                    -- Restart Auto Save jika flag aktif di config yang diload
+                    if _G.Config.AutoSaveEnabled then
+                        local interval = type(_G.Config.AutoSaveInterval) == "number" and _G.Config.AutoSaveInterval or 60
+                        startAutoSave(interval)
+                    end
                 end
             end
         end
@@ -341,12 +395,18 @@ local function Init(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSecti
         Title = "Delete Config",
         Callback = function()
             local path = configFolder .. selectedConfig .. ".json"
-            if isfile(path) then
+            if isfile and isfile(path) then
                 delfile(path)
                 refreshConfigs()
             end
         end
     })
+
+    -- Mulai auto save jika sudah aktif dari sebelumnya
+    if _G.Config.AutoSaveEnabled then
+        local interval = type(_G.Config.AutoSaveInterval) == "number" and _G.Config.AutoSaveInterval or 60
+        startAutoSave(interval)
+    end
 
     -- NPC & Balloon Teleport Sections
     local TeleportNPC = getMod("TeleportNPC")
