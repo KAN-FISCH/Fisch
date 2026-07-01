@@ -26,6 +26,7 @@ local function getMod(name)
         warn("[NewFish5] Missing module:", name)
     end
 end
+_G.getMod = getMod
 
 local Config = getMod("Config")
 local Utils = getMod("Utils")
