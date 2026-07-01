@@ -147,14 +147,6 @@ local function setupGUI()
         end
     })
 
-        MainSection:AddToggle({
-        Title = "No Action Safe",
-        Default = _G.Config.NoActionSafe or false,
-        Callback = function(value)
-            if MiscFishing then MiscFishing.NoActionSafe(value) end
-        end
-    })
-
     MainSection:AddToggle({
         Title = "Auto Equip Rod",
         Default = _G.Config.isEquipRpd or false,
@@ -213,7 +205,7 @@ local function setupGUI()
         end
     })
 
-    SettingFish:AddToggle({
+    MainSection:AddToggle({
         Title = "Auto Shake",
         Default = _G.Config.AutoShake or false,
         Callback = function(value)
