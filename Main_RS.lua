@@ -1365,6 +1365,16 @@ local function setupGUI()
         end)
     end
     if InitExclusive then
+        getgenv().Info = Info
+        getgenv().FishingTab = FishingTab
+        getgenv().ShopTab = ShopTab
+        getgenv().Exclusive = Exclusive
+        getgenv().AutosTab = AutosTab
+        getgenv().AreaTab = AreaTab
+        getgenv().EspTab = EspTab
+        getgenv().Misc = Misc
+        getgenv().SettingsTab = SettingsTab
+
         InitExclusive(ExclusiveSection, AutoMineSection, AutoSaveSection, NPCSection, BallonSection, EspCharacterSection, EspEventSection, EspNpcSection)
     end
 
@@ -1421,4 +1431,16 @@ end
 
 setupGUI()
 print("[NewFish5] GUI Loaded Successfully from ReplicatedStorage!")
+
+task.spawn(function()
+    task.wait(1)
+    if _G.Config then
+        if InstantBobber and _G.Config.InstantCast then InstantBobber(true) end
+        if AutoCast and _G.Config.AutoCast then AutoCast(true) end
+        if AutoReel and _G.Config.AutoReel then AutoReel(true) end
+        if AutoShake and _G.Config.AutoShake then AutoShake(true) end
+        if AutoSell and _G.Config.AutoSell then AutoSell(true) end
+        if MiscFishing and MiscFishing.AutoEquipRod and _G.Config.isEquipRpd then MiscFishing.AutoEquipRod(true) end
+    end
+end)
 
