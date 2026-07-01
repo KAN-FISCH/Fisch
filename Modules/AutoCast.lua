@@ -1,234 +1,174 @@
+-- AutoCast.lua - Optimized lightweight version
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Helper getMod loader (no script dependency)
-local function getMod(name)
-    if _G.getMod then return _G.getMod(name) end
-    local core = game:GetService("ReplicatedStorage"):FindFirstChild("Shield_Core")
-    if core then
-        local folder = core:FindFirstChild(name)
-        if folder then
-            if folder:IsA("Folder") then
-                local src = ""
-                for i = 1, #folder:GetChildren() do
-                    local chunk = folder:FindFirstChild(tostring(i))
-                    if chunk then src = src .. chunk.Value end
-                end
-                return loadstring(src)()
-            else
-                return loadstring(folder.Value)()
-            end
-        end
-    end
-    return nil
-end
+-- Cache sekali saja, tidak di-poll ulang
+local IB = nil -- InstantBobber cache
+local castRemote = nil
+local heartbeatConn = nil
+local bobberConn = nil
 
-local STATE_CAST = "CAST"
-local STATE_WAIT = "WAIT"
-local STATE_LOCK = "LOCK"
-local HEARTBEAT_THROTTLE = 0.05
-
-local state = STATE_CAST
-local lockedCFrame = nil
-local bobberRef = nil
-local lastSpamCast = 0
-local bobberHandled = false
-local cachedBP = nil
-local cachedBG = nil
+-- State
+local S_CAST, S_WAIT, S_LOCK = 1, 2, 3
+local state = S_CAST
+local lastTick = 0
+local lastCastTick = 0
 local castPending = false
-local lastHeartbeat = 0
-local lastCastTime = 0
+local bobberHandled = false
+local lockedCF = nil
+local bobberRef = nil
 
-local heartbeatConnection = nil
-local bobberConnection = nil
+local THROTTLE = 0.05
 
-local castRemoteCache = nil
-pcall(function()
-    castRemoteCache = game:GetService("ReplicatedStorage")
-        :WaitForChild("packages", 10)
-        :WaitForChild("Net", 10)
-        :WaitForChild("RF/FishingRod/Cast", 10)
+-- Cache Cast Remote
+task.spawn(function()
+    pcall(function()
+        castRemote = game:GetService("ReplicatedStorage")
+            :WaitForChild("packages", 15)
+            :WaitForChild("Net", 15)
+            :WaitForChild("RF/FishingRod/Cast", 15)
+    end)
 end)
 
-local function getRodName()
-    local success, result = pcall(function()
+-- Rod name helper - simple pcall, tidak loop
+local function getRod(char)
+    local ok, rodName = pcall(function()
         return workspace.PlayerStats[LocalPlayer.Name].T[LocalPlayer.Name].Stats.rod.Value
     end)
-    return success and result or nil
-end
-
-local function safeDisconnect(connName)
-    if connName == "bobber" and bobberConnection then
-        pcall(function() bobberConnection:Disconnect() end)
-        bobberConnection = nil
-    elseif connName == "heartbeat" and heartbeatConnection then
-        pcall(function() heartbeatConnection:Disconnect() end)
-        heartbeatConnection = nil
+    if ok and rodName and rodName ~= "" then
+        return char:FindFirstChild(rodName)
     end
 end
 
-local function setupBobberWatch(rod, hrp)
-    local InstantBobber = getMod("InstantBobber")
-    if not InstantBobber then return end
+local function resetState()
+    state = S_CAST
+    castPending = false
+    bobberHandled = false
+    lockedCF = nil
+    bobberRef = nil
+    if bobberConn then bobberConn:Disconnect(); bobberConn = nil end
+end
 
-    safeDisconnect("bobber")
+local function lockBobber(bobber, cf, hrp)
+    if not IB or not bobber or not bobber.Parent then return end
+    IB.InstantTeleportBobber(bobber, cf, hrp)
+    lockedCF = cf
+    bobberRef = bobber
+    state = S_LOCK
+    if bobberConn then bobberConn:Disconnect(); bobberConn = nil end
+end
+
+local function watchBobber(rod, hrp)
+    if bobberConn then bobberConn:Disconnect(); bobberConn = nil end
     if not rod or not rod.Parent then return end
-    bobberConnection = rod.ChildAdded:Connect(function(child)
+    bobberConn = rod.ChildAdded:Connect(function(child)
         if child.Name == "bobber" and child:IsA("BasePart") and not bobberHandled then
             bobberHandled = true
             pcall(function()
                 if not hrp or not hrp.Parent then return end
-                local targetCFrame = InstantBobber.GetTargetPosition(hrp)
-                if targetCFrame and child and child.Parent then
-                    InstantBobber.InstantTeleportBobber(child, targetCFrame, hrp)
-                    lockedCFrame = targetCFrame
-                    bobberRef = child
-                    cachedBP = child:FindFirstChild("HoldPos")
-                    cachedBG = child:FindFirstChild("HoldRot")
-                    state = STATE_LOCK
+                local cf = IB and IB.GetTargetPosition(hrp)
+                if cf then
+                    lockBobber(child, cf, hrp)
                 end
             end)
-            safeDisconnect("bobber")
         end
     end)
 end
 
--- Initialize Loop
-task.spawn(function()
-    local InstantBobber = getMod("InstantBobber")
-    while not InstantBobber do
-        task.wait(0.5)
-        InstantBobber = getMod("InstantBobber")
-    end
+local function doCast(rod, hrp)
+    if not castRemote or not rod:FindFirstChild("events") then return end
+    castPending = true
+    task.spawn(function()
+        pcall(function()
+            local power = (math.random(10) > 7) and math.random(95, 99) or 100
+            local perfect = math.random(100) <= (type(_G.Config.perfectCastEnabled) == "number" and _G.Config.perfectCastEnabled or 100)
+            castRemote:InvokeServer(power, perfect)
+        end)
+        lastCastTick = tick()
+        state = S_WAIT
+        bobberHandled = false
+        castPending = false
+        lockedCF = nil; bobberRef = nil; cachedBP = nil; cachedBG = nil
+        watchBobber(rod, hrp)
+    end)
+end
 
-    heartbeatConnection = RunService.Heartbeat:Connect(function()
+local function startLoop()
+    if heartbeatConn then heartbeatConn:Disconnect() end
+    heartbeatConn = RunService.Heartbeat:Connect(function()
         local now = tick()
-        if now - lastHeartbeat < HEARTBEAT_THROTTLE then return end
-        lastHeartbeat = now
+        if now - lastTick < THROTTLE then return end
+        lastTick = now
 
-        if not _G.Config or not _G.Config.AutoCast then
-            state = STATE_CAST
-            bobberRef = nil
-            lockedCFrame = nil
-            cachedBP = nil
-            cachedBG = nil
-            bobberHandled = false
-            castPending = false
-            return
-        end
+        if not (_G.Config and _G.Config.AutoCast) then return end
 
         local char = LocalPlayer.Character
-        if not char or not char.Parent then return end
-
+        if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp or not hrp.Parent then return end
+        if not hrp then return end
+        local rod = getRod(char)
+        if not rod then return end
 
-        local rodName = getRodName()
-        if not rodName then return end
-        local rod = char:FindFirstChild(rodName)
-        if not rod or not rod.Parent then
-            return
-        end
+        if state == S_CAST then
+            if not castPending then
+                doCast(rod, hrp)
+            end
 
-        local ok, err = pcall(function()
-            if state == STATE_CAST then
-                if castPending then return end
-                local events = rod:FindFirstChild("events")
-                if events then
-                    castPending = true
-                    task.spawn(function()
-                        pcall(function()
-                            task.wait(0.01)
-                            local basePower = 100
-                            if math.random(1, 10) > 7 then
-                                basePower = math.random(95, 99)
-                            end
-                            local perfectChance = 100
-                            if _G.Config and type(_G.Config.perfectCastEnabled) == "number" then
-                                perfectChance = _G.Config.perfectCastEnabled
-                            end
-                            local isPerfect = math.random(1, 100) <= perfectChance
-                            if castRemoteCache then
-                                castRemoteCache:InvokeServer(basePower, isPerfect)
-                            end
-                        end)
-                        lastCastTime = tick()
-                        state = STATE_WAIT
-                        bobberRef = nil
-                        lockedCFrame = nil
-                        cachedBP = nil
-                        cachedBG = nil
-                        lastSpamCast = tick()
-                        bobberHandled = false
-                        castPending = false
-                        if rod and rod.Parent and hrp and hrp.Parent then
-                            setupBobberWatch(rod, hrp)
-                        end
+        elseif state == S_WAIT then
+            if not bobberHandled then
+                local b = rod:FindFirstChild("bobber")
+                if b and b:IsA("BasePart") and b.Parent then
+                    bobberHandled = true
+                    pcall(function()
+                        local cf = IB and IB.GetTargetPosition(hrp)
+                        if cf then lockBobber(b, cf, hrp) end
                     end)
-                end
-
-            elseif state == STATE_WAIT then
-                if not bobberHandled then
-                    local bobber = rod:FindFirstChild("bobber")
-                    if bobber and bobber:IsA("BasePart") and bobber.Parent then
-                        bobberHandled = true
-                        local targetCFrame = InstantBobber.GetTargetPosition(hrp)
-                        if targetCFrame then
-                            InstantBobber.InstantTeleportBobber(bobber, targetCFrame, hrp)
-                            lockedCFrame = targetCFrame
-                            bobberRef = bobber
-                            cachedBP = bobber:FindFirstChild("HoldPos")
-                            cachedBG = bobber:FindFirstChild("HoldRot")
-                            state = STATE_LOCK
-                        end
-                        safeDisconnect("bobber")
-                    end
-                end
-                if not bobberHandled and now - lastCastTime >= 0.6 then
-                    safeDisconnect("bobber")
-                    state = STATE_CAST
-                end
-
-            elseif state == STATE_LOCK then
-                if not bobberRef or not bobberRef.Parent then
-                    cachedBP = nil; cachedBG = nil; state = STATE_CAST; return
-                end
-                if not lockedCFrame then state = STATE_CAST; return end
-                local currentDist = (hrp.Position - bobberRef.Position).Magnitude
-                if currentDist > 60 then
-                    cachedBP = nil; cachedBG = nil; state = STATE_CAST; return
-                end
-                if cachedBP and cachedBP.Parent then
-                    cachedBP.Position = lockedCFrame.Position
-                end
-                if cachedBG and cachedBG.Parent then
-                    cachedBG.CFrame = lockedCFrame
-                end
-                local drift = (bobberRef.Position - lockedCFrame.Position).Magnitude
-                if drift > 4 then
-                    if drift <= 20 then
-                        bobberRef.CFrame = lockedCFrame
-                        bobberRef.AssemblyLinearVelocity = Vector3.zero
-                        bobberRef.AssemblyAngularVelocity = Vector3.zero
-                    else
-                        cachedBP = nil; cachedBG = nil; state = STATE_CAST; return
-                    end
+                elseif now - lastCastTick > 0.8 then
+                    -- timeout, cast lagi
+                    if bobberConn then bobberConn:Disconnect(); bobberConn = nil end
+                    state = S_CAST
                 end
             end
-        end)
 
-        if not ok then
-            state = STATE_CAST
-            cachedBP = nil; cachedBG = nil; bobberRef = nil
+        elseif state == S_LOCK then
+            if not (bobberRef and bobberRef.Parent and lockedCF) then
+                resetState(); return
+            end
+            -- Jika bobber terlalu jauh dari player, re-cast
+            if (hrp.Position - bobberRef.Position).Magnitude > 65 then
+                resetState(); return
+            end
+            -- Koreksi drift - bobber bisa bergeser sedikit karena physics
+            local drift = (bobberRef.Position - lockedCF.Position).Magnitude
+            if drift > 2 then
+                if drift <= 22 then
+                    pcall(function()
+                        bobberRef.CFrame = lockedCF
+                    end)
+                else
+                    resetState(); return
+                end
+            end
         end
     end)
+end
+
+-- Inisialisasi: tunggu _G.getMod siap lalu cache InstantBobber sekali saja
+task.spawn(function()
+    local t = 0
+    while not _G.getMod and t < 10 do task.wait(0.3); t = t + 0.3 end
+    if _G.getMod then
+        IB = _G.getMod("InstantBobber")
+    end
+    startLoop()
 end)
 
 local AutoCast = {}
 setmetatable(AutoCast, {
-    __call = function(self, value)
+    __call = function(_, value)
         _G.Config.AutoCast = value
+        if not value then resetState() end
     end
 })
 

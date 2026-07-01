@@ -1,206 +1,152 @@
+-- InstantBobber.lua - Optimized lightweight version
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local cachedFishingParts = {}
-local cachedCarrotMeshes = {}
-local cacheValid = false
-local lastCacheTime = 0
-local CACHE_LIFETIME = 30
+-- Cache zona air - di-scan SEKALI saja, tidak tiap heartbeat
+local waterParts = {}
+local cacheBuilt = false
 
-local MIN_DISTANCE = 8
-local SAFE_DISTANCE = 18
-local MAX_BOBBER_DISTANCE = 60
+local MIN_DIST  = 8
+local MAX_DIST  = 60
+local DEPTH     = 1.5
 
-local function rebuildCache()
-    cachedFishingParts = {}
-    cachedCarrotMeshes = {}
-    local function scanParts(parent, depth)
-        if depth > 6 then return end
-        for _, part in ipairs(parent:GetChildren()) do
-            if part:IsA("BasePart") then
-                local name = part.Name:lower()
-                if name:find("water") or name:find("ocean") or name:find("lake") or name:find("sea") then
-                    table.insert(cachedFishingParts, part)
-                elseif name:find("carrot") then
-                    table.insert(cachedCarrotMeshes, part)
+-- Scan workspace satu kali, hanya cari BasePart yang namanya mengandung kata air
+-- Tidak rekursif deep scan - cukup 3 level saja agar ringan
+local function buildCache()
+    if cacheBuilt then return end
+    cacheBuilt = true
+    waterParts = {}
+
+    local function scanLevel(parent, depth)
+        if depth > 3 then return end
+        for _, obj in ipairs(parent:GetChildren()) do
+            if obj:IsA("BasePart") then
+                local n = obj.Name:lower()
+                if n:find("water") or n:find("ocean") or n:find("lake") or n:find("sea") or n:find("pond") then
+                    waterParts[#waterParts + 1] = obj
                 end
-            elseif part:IsA("Folder") or part:IsA("Model") then
-                scanParts(part, depth + 1)
-            end
-        end
-    end
-    scanParts(workspace, 0)
-    cacheValid = true
-    lastCacheTime = tick()
-end
-
-local function ensureCache()
-    local now = tick()
-    if not cacheValid or (now - lastCacheTime) > CACHE_LIFETIME then
-        rebuildCache()
-    end
-end
-
-local function lockBobberPhysics(bobber)
-    if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
-    pcall(function()
-        bobber.CanCollide = false
-        bobber.Anchored = false
-        bobber.Massless = true
-        bobber.CustomPhysicalProperties = PhysicalProperties.new(0.1, 0, 0, 0.5, 0.5)
-        local bp = bobber:FindFirstChild("HoldPos")
-        if not bp then
-            bp = Instance.new("BodyPosition")
-            bp.Name = "HoldPos"
-            bp.Parent = bobber
-        end
-        bp.MaxForce = Vector3.new(50000, 50000, 50000)
-        bp.Position = bobber.Position
-        bp.P = 5000
-        bp.D = 200
-        local bg = bobber:FindFirstChild("HoldRot")
-        if not bg then
-            bg = Instance.new("BodyGyro")
-            bg.Name = "HoldRot"
-            bg.Parent = bobber
-        end
-        bg.MaxTorque = Vector3.new(50000, 50000, 50000)
-        bg.CFrame = bobber.CFrame
-        bg.P = 5000
-        bg.D = 200
-        bobber.AssemblyLinearVelocity = Vector3.zero
-        bobber.AssemblyAngularVelocity = Vector3.zero
-        for _, part in ipairs(bobber:GetDescendants()) do
-            if part:IsA("BasePart") and part.Parent then
-                part.CanCollide = false
-                part.Massless = true
-            end
-        end
-    end)
-end
-
-local function findWaterSurface(horizontalPos, hrpPos, maxDistance)
-    local startHeight = math.max(hrpPos.Y, horizontalPos.Y) + 20
-    local rayOrigin = Vector3.new(horizontalPos.X, startHeight, horizontalPos.Z)
-    local rayDirection = Vector3.new(0, -200, 0)
-    local BOBBER_DEPTH = 1.5
-
-    local filterType = Enum.RaycastFilterType.Exclude
-
-    if #cachedFishingParts > 0 then
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Include
-        raycastParams.FilterDescendantsInstances = cachedFishingParts
-        local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-        if result and result.Instance then
-            local finalPos = Vector3.new(horizontalPos.X, result.Position.Y - BOBBER_DEPTH, horizontalPos.Z)
-            if (hrpPos - finalPos).Magnitude <= maxDistance then
-                return CFrame.new(finalPos)
+            elseif obj:IsA("Model") or obj:IsA("Folder") then
+                scanLevel(obj, depth + 1)
             end
         end
     end
 
-    local raycastParams2 = RaycastParams.new()
-    raycastParams2.FilterType = filterType
-    raycastParams2.FilterDescendantsInstances = {LocalPlayer.Character}
-    local result2 = workspace:Raycast(rayOrigin, rayDirection, raycastParams2)
-    if result2 and result2.Instance then
-        local finalPos = Vector3.new(horizontalPos.X, result2.Position.Y - BOBBER_DEPTH, horizontalPos.Z)
-        if (hrpPos - finalPos).Magnitude <= maxDistance then
-            return CFrame.new(finalPos)
+    -- Prioritas: zona fishing di workspace.world
+    local world = workspace:FindFirstChild("world")
+    if world then
+        local zones = world:FindFirstChild("zones")
+        if zones then
+            local fishing = zones:FindFirstChild("fishing")
+            if fishing then
+                for _, part in ipairs(fishing:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        waterParts[#waterParts + 1] = part
+                    end
+                end
+            end
         end
+        -- Juga scan world langsung (kedalaman 2)
+        scanLevel(world, 0)
+    end
+
+    -- Fallback: scan workspace level atas saja
+    if #waterParts == 0 then
+        scanLevel(workspace, 0)
+    end
+end
+
+-- Bersihkan cache saat pindah zona/server
+workspace.ChildAdded:Connect(function() cacheBuilt = false; waterParts = {} end)
+workspace.ChildRemoved:Connect(function() cacheBuilt = false; waterParts = {} end)
+
+-- Cari permukaan air via raycast sederhana dari titik di depan karakter
+local function findWater(origin, hrpPos)
+    local rayStart = Vector3.new(origin.X, math.max(hrpPos.Y, origin.Y) + 20, origin.Z)
+    local rayDir   = Vector3.new(0, -200, 0)
+
+    -- Coba raycast ke zona air spesifik
+    if #waterParts > 0 then
+        local p = RaycastParams.new()
+        p.FilterType = Enum.RaycastFilterType.Include
+        p.FilterDescendantsInstances = waterParts
+        local hit = workspace:Raycast(rayStart, rayDir, p)
+        if hit then
+            return CFrame.new(origin.X, hit.Position.Y - DEPTH, origin.Z)
+        end
+    end
+
+    -- Fallback raycast umum (abaikan karakter sendiri)
+    local p2 = RaycastParams.new()
+    p2.FilterType = Enum.RaycastFilterType.Exclude
+    p2.FilterDescendantsInstances = {LocalPlayer.Character}
+    local hit2 = workspace:Raycast(rayStart, rayDir, p2)
+    if hit2 then
+        return CFrame.new(origin.X, hit2.Position.Y - DEPTH, origin.Z)
     end
     return nil
 end
 
-local function getTargetPosition(hrp)
-    ensureCache()
-    local hrpPos = hrp.Position
-    local lookVector = hrp.CFrame.LookVector
+-- Posisi target bobber di depan karakter
+local function GetTargetPosition(hrp)
+    buildCache() -- no-op setelah pertama kali
+    local pos = hrp.Position
+    local look = hrp.CFrame.LookVector
+    local right = hrp.CFrame.RightVector
 
-    -- Prioritize carrot meshes
-    if #cachedCarrotMeshes > 0 then
-        local closestMesh, closestDist = nil, math.huge
-        for i = 1, #cachedCarrotMeshes do
-            local mesh = cachedCarrotMeshes[i]
-            if mesh and mesh.Parent then
-                local dist = (hrpPos - mesh.Position).Magnitude
-                if dist < closestDist and dist <= MAX_BOBBER_DISTANCE then
-                    closestDist = dist
-                    closestMesh = mesh
-                end
-            end
-        end
-        if closestMesh and closestDist <= SAFE_DISTANCE then
-            return CFrame.new(closestMesh.Position)
-        end
-    end
+    -- Coba beberapa titik di depan karakter (dari dekat ke jauh)
+    local tries = {
+        pos + look * MIN_DIST,
+        pos + look * 12,
+        pos + look * 18,
+        pos + look * 12 + right * 2,
+        pos + look * 12 - right * 2,
+    }
 
-    -- Try positions in front of character
-    if #cachedFishingParts > 0 then
-        local rightVector = hrp.CFrame.RightVector
-        local testPositions = {
-            hrpPos + lookVector * MIN_DISTANCE,
-            hrpPos + lookVector * 12,
-            hrpPos + lookVector * SAFE_DISTANCE,
-            hrpPos + lookVector * 12 + rightVector * 2,
-            hrpPos + lookVector * 12 - rightVector * 2,
-        }
-        for _, testPos in ipairs(testPositions) do
-            local waterCFrame = findWaterSurface(testPos, hrpPos, MAX_BOBBER_DISTANCE)
-            if waterCFrame then return waterCFrame end
+    for _, t in ipairs(tries) do
+        local cf = findWater(t, pos)
+        if cf and (pos - cf.Position).Magnitude <= MAX_DIST then
+            return cf
         end
     end
 
-    -- Fallback
-    local fallbackPos = hrpPos + lookVector * MIN_DISTANCE
-    local startHeight = math.max(hrpPos.Y, fallbackPos.Y) + 20
-    local rayOrigin = Vector3.new(fallbackPos.X, startHeight, fallbackPos.Z)
-    local rayDirection = Vector3.new(0, -200, 0)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    if result then
-        return CFrame.new(fallbackPos.X, result.Position.Y - 1.5, fallbackPos.Z)
-    end
-
-    return CFrame.new(fallbackPos.X, hrpPos.Y - 10, fallbackPos.Z)
+    -- Fallback: titik 8 studs di depan, turunkan ke bawah karakter
+    local fb = pos + look * MIN_DIST
+    return CFrame.new(fb.X, pos.Y - 8, fb.Z)
 end
 
-local function instantTeleportBobber(bobber, targetCFrame, hrp)
+-- Kunci fisika bobber - pakai Anchored aja, lebih ringan
+local function LockBobberPhysics(bobber)
     if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
-    if not targetCFrame or not hrp or not hrp.Parent then return end
     pcall(function()
-        local randomOffset = Vector3.new(
-            (math.random() - 0.5) * 0.5, 0, (math.random() - 0.5) * 0.5
-        )
-        bobber.CFrame = targetCFrame + randomOffset
+        bobber.Anchored = true
+        bobber.CanCollide = false
         bobber.AssemblyLinearVelocity = Vector3.zero
         bobber.AssemblyAngularVelocity = Vector3.zero
     end)
-    lockBobberPhysics(bobber)
-    task.defer(function()
-        pcall(function()
-            if bobber and bobber.Parent then
-                bobber.CFrame = targetCFrame
-                bobber.AssemblyLinearVelocity = Vector3.zero
-                bobber.AssemblyAngularVelocity = Vector3.zero
-            end
-        end)
+end
+
+-- Teleport instan bobber ke posisi target
+local function InstantTeleportBobber(bobber, targetCF, hrp)
+    if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
+    if not targetCF then return end
+    pcall(function()
+        bobber.Anchored = true
+        bobber.CanCollide = false
+        bobber.CFrame = targetCF
+        bobber.AssemblyLinearVelocity = Vector3.zero
+        bobber.AssemblyAngularVelocity = Vector3.zero
     end)
 end
 
 local InstantBobber = {
-    GetTargetPosition = getTargetPosition,
-    InstantTeleportBobber = instantTeleportBobber,
-    LockBobberPhysics = lockBobberPhysics,
-    EnsureCache = ensureCache,
+    GetTargetPosition     = GetTargetPosition,
+    InstantTeleportBobber = InstantTeleportBobber,
+    LockBobberPhysics     = LockBobberPhysics,
+    InvalidateCache       = function() cacheBuilt = false; waterParts = {} end,
 }
 
 setmetatable(InstantBobber, {
-    __call = function(self, value)
+    __call = function(_, value)
         _G.Config.InstantCast = value
     end
 })
