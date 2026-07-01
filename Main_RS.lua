@@ -1227,6 +1227,114 @@ local function setupGUI()
         end
     })
 
+    getgenv().__var = {
+        reelConnection = nil,
+        autoReelEnabled = true,
+        perfectCatchEnabled = 0,
+        perfectCastEnabled = 100,
+        DelayTimeFaster = 0.1,
+        isReeling = false,
+        AutoSnapEnabled = false,
+        SnapRelics = {},
+        SnapRarity = {},
+        SnapTarget = "",
+        SnapMutations = {},
+        Hunting_Enabled = false,
+        Hunting_Target = nil,
+        SnapTargetManual = "",
+        savedPosition = nil,
+        barSize = 2,
+        Notif5Counter = 0,
+        lastSkipTime = os.time()
+    }
+    getgenv().configFolder = "ExclusiveConfigs/"
+    getgenv().currentConfigFile = "Default"
+    getgenv().savedConfigsList = {}
+    getgenv().lastSaveTime = os.time()
+    getgenv().totalSaves = 0
+    getgenv().ConfigStatusParagraph = nil
+
+    getgenv().teleportToSavedPosition = function(position)
+        if not position or not position.X or not position.Y or not position.Z then
+            return false
+        end
+
+        task.spawn(function()
+            local player = game.Players.LocalPlayer
+            local char = player.Character or player.CharacterAdded:Wait()
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+
+            if root then
+                root.CFrame = CFrame.new(position.X, position.Y, position.Z)
+                task.wait(0.5)
+            end
+        end)
+        return true
+    end
+
+    getgenv().loadConfig = function(configName, autoTeleport)
+        configName = configName or getgenv().currentConfigFile
+        if autoTeleport == nil then 
+            autoTeleport = _G.Config.AutoTeleportOnLoad 
+        end
+
+        local filePath = getgenv().configFolder .. configName .. ".json"
+        if readfile and isfile and isfile(filePath) then
+            local HttpService = game:GetService("HttpService")
+            local success, result = pcall(function()
+                return HttpService:JSONDecode(readfile(filePath))
+            end)
+
+            if success and result then
+                local loadedConfig = result.Config or result
+                local loadedVar = result.Var or {}
+
+                for key, value in pairs(loadedConfig) do
+                    if type(value) == "table" then
+                        _G.Config[key] = value
+                    else
+                        _G.Config[key] = value
+                    end
+                end
+
+                for key, value in pairs(loadedVar) do
+                    if key ~= "reelConnection" and key ~= "isReeling" then
+                        getgenv().__var[key] = value
+                    end
+                end
+
+                getgenv().currentConfigFile = configName
+                getgenv().lastSaveTime = os.time()
+
+                if autoTeleport and _G.Config.SavedPosition then
+                    getgenv().teleportToSavedPosition(_G.Config.SavedPosition)
+                end
+
+                return true
+            end
+        end
+
+        warn("[Config] Load failed: " .. configName)
+        return false
+    end
+
+    if isfolder and isfolder(getgenv().configFolder) and listfiles then
+        local files = listfiles(getgenv().configFolder)
+        local found = {}
+        for _, file in pairs(files) do
+            if type(file) == "string" and file:match("%.json$") then
+                local fileName = file:match("([^/\\]+)%.json$")
+                if fileName then
+                    table.insert(found, fileName)
+                end
+            end
+        end
+        table.sort(found)
+        if #found > 0 then
+            getgenv().loadConfig(found[1], true)
+        end
+    end
+
     local InitExclusive = getMod("Exclusive")
     if not InitExclusive then
         pcall(function()
