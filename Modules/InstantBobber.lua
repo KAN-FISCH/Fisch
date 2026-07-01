@@ -9,12 +9,25 @@ local function GetTargetPosition(hrp)
     return CFrame.new(pos.X, pos.Y - 3, pos.Z)
 end
 
+-- Zero velocity bobber
+local function LockBobberPhysics(bobber)
+    if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
+    pcall(function()
+        bobber.CanCollide = false
+        bobber.AssemblyLinearVelocity = Vector3.zero
+        bobber.AssemblyAngularVelocity = Vector3.zero
+    end)
+end
+
 -- Teleport instan bobber ke posisi target
 local function InstantTeleportBobber(bobber, targetCF)
     if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
     if not targetCF then return end
     pcall(function()
+        bobber.CanCollide = false
         bobber.CFrame = targetCF
+        bobber.AssemblyLinearVelocity = Vector3.zero
+        bobber.AssemblyAngularVelocity = Vector3.zero
     end)
 end
 
