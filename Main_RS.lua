@@ -116,7 +116,7 @@ local function setupGUI()
 
         MainSection:AddDropdown({
         Title = "Reel Mode",
-        Values = {"Super Instant", "Instant", "Legit", "5 Notif", "Manual"},
+        Options = {"Super Instant", "Legit", "Manual"},
         Default = _G.Config.ReelMode or "Super Instant",
         Callback = function(value)
             _G.Config.ReelMode = value
