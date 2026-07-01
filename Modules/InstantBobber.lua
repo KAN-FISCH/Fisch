@@ -114,11 +114,10 @@ local function GetTargetPosition(hrp)
     return CFrame.new(fb.X, pos.Y - 8, fb.Z)
 end
 
--- Kunci fisika bobber - pakai Anchored aja, lebih ringan
+-- Zero velocity bobber agar tidak terbawa fisik
 local function LockBobberPhysics(bobber)
     if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
     pcall(function()
-        bobber.Anchored = true
         bobber.CanCollide = false
         bobber.AssemblyLinearVelocity = Vector3.zero
         bobber.AssemblyAngularVelocity = Vector3.zero
@@ -126,11 +125,10 @@ local function LockBobberPhysics(bobber)
 end
 
 -- Teleport instan bobber ke posisi target
-local function InstantTeleportBobber(bobber, targetCF, hrp)
+local function InstantTeleportBobber(bobber, targetCF)
     if not bobber or not bobber:IsA("BasePart") or not bobber.Parent then return end
     if not targetCF then return end
     pcall(function()
-        bobber.Anchored = true
         bobber.CanCollide = false
         bobber.CFrame = targetCF
         bobber.AssemblyLinearVelocity = Vector3.zero

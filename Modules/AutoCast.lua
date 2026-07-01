@@ -139,17 +139,19 @@ local function startLoop()
             if (hrp.Position - bobberRef.Position).Magnitude > 65 then
                 resetState(); return
             end
-            -- Koreksi drift - bobber bisa bergeser sedikit karena physics
-            local drift = (bobberRef.Position - lockedCF.Position).Magnitude
-            if drift > 2 then
-                if drift <= 22 then
-                    pcall(function()
+            -- Paksa posisi + zero velocity tiap tick agar tidak terbawa fisik
+            pcall(function()
+                local drift = (bobberRef.Position - lockedCF.Position).Magnitude
+                if drift > 1 then
+                    if drift <= 22 then
                         bobberRef.CFrame = lockedCF
-                    end)
-                else
-                    resetState(); return
+                    else
+                        resetState(); return
+                    end
                 end
-            end
+                bobberRef.AssemblyLinearVelocity = Vector3.zero
+                bobberRef.AssemblyAngularVelocity = Vector3.zero
+            end)
         end
     end)
 end
