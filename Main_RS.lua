@@ -1358,13 +1358,30 @@ local function setupGUI()
         end
     end
 
-    local InitExclusive = getMod("Exclusive")
-    if not InitExclusive then
-        pcall(function()
-            InitExclusive = require(script.Parent.Modules.Exclusive)
-        end)
+    local modulesToLoad = {
+        "AutoCosmic",
+        "AutoMinigames",
+        "AutoHop",
+        "AutoPotion",
+        "AutoConfig",
+        "AutoStorage",
+        "MiscFeatures"
+    }
+
+    local loadedModules = {}
+    for _, modName in ipairs(modulesToLoad) do
+        local mod = getMod(modName)
+        if not mod then
+            pcall(function()
+                mod = require(script.Parent.Modules[modName])
+            end)
+        end
+        if type(mod) == "function" then
+            table.insert(loadedModules, mod)
+        end
     end
-    if InitExclusive then
+
+    if #loadedModules > 0 then
         local function createProxy(obj)
             if type(obj) ~= "table" and type(obj) ~= "userdata" then return obj end
             return setmetatable({}, {
@@ -1527,16 +1544,18 @@ local function setupGUI()
             end)
         end
 
-        pcall(function()
-            if type(InitExclusive) == "function" then
-                local env = getfenv(InitExclusive)
+        for _, initMod in ipairs(loadedModules) do
+            pcall(function()
+                local env = getfenv(initMod)
                 env.teleportToSavedPosition = getgenv().teleportToSavedPosition
                 env.deepCopy = getgenv().deepCopy
                 env.startAutoClaimMulti = getgenv().startAutoClaimMulti
-            end
-        end)
-
-        InitExclusive(pExclusiveSection, pAutoMineSection, pAutoSaveSection, pNPCSection, pBallonSection, pEspCharacterSection, pEspEventSection, pEspNpcSection)
+            end)
+            
+            pcall(function()
+                initMod(pExclusiveSection, pAutoMineSection, pAutoSaveSection, pNPCSection, pBallonSection, pEspCharacterSection, pEspEventSection, pEspNpcSection)
+            end)
+        end
     end
 
     ExclusiveSection:AddButton({
