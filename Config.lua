@@ -76,6 +76,7 @@ _G.Config = {
     DeleteAnimation = false,
     AutoSellShady = false,
     AutoClaimAquarium = false,
+    AutoQuestShady = false,
 }
 
 _G.__var = {
