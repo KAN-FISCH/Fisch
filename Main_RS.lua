@@ -196,12 +196,47 @@ local AutoQuestShady = getMod("AutoQuestShady")
 local executorName = Utils and Utils.DetectExecutor() or "Unknown"
 
 local GUI_URL = "https://key.shieldteam.asia/raw/Fisch/tester26.txt"
+local Fallback_GUI_URL = "https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/tester26.txt"
+
+local function httpGetWithTimeout(url, timeout)
+    local result = nil
+    local success = false
+    local completed = false
+    
+    local thread = coroutine.running()
+    
+    task.spawn(function()
+        local ok, res = pcall(function()
+            return game:HttpGet(url)
+        end)
+        if not completed then
+            completed = true
+            success = ok
+            result = res
+            task.spawn(thread)
+        end
+    end)
+    
+    task.delay(timeout or 5, function()
+        if not completed then
+            completed = true
+            success = false
+            result = "Timeout"
+            task.spawn(thread)
+        end
+    end)
+    
+    coroutine.yield()
+    return success, result
+end
+
 local _guiOk, Speed_Library = false, nil
 local retries = 999999
 local delayTime = 3
 
 for attempt = 1, retries do
-    local success, res = pcall(function() return game:HttpGet(GUI_URL) end)
+    local targetURL = (attempt % 2 == 1) and GUI_URL or Fallback_GUI_URL
+    local success, res = httpGetWithTimeout(targetURL, 5)
     local isHtml = success and res and (res:sub(1, 15):lower():match("<!doctype html") or res:sub(1, 10):lower():match("<html"))
     if success and res and not isHtml then
         local fn, err = loadstring(res)
