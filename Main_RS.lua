@@ -1766,7 +1766,13 @@ local function setupGUI()
                 local loadedVar = result.Var or {}
 
                 for key, value in pairs(loadedConfig) do
-                    if type(value) == "table" then
+                    if key == "SavedPosition" then
+                        if type(value) == "table" and value.x then
+                            _G.Config[key] = CFrame.new(value.x, value.y, value.z)
+                        else
+                            _G.Config[key] = nil
+                        end
+                    elseif type(value) == "table" then
                         _G.Config[key] = value
                     else
                         _G.Config[key] = value
@@ -1820,8 +1826,15 @@ local function setupGUI()
         if not isfolder(getgenv().configFolder) then
             makefolder(getgenv().configFolder)
         end
+        local configCopy = getgenv().deepCopy(_G.Config)
+        local savedPosCF = _G.Config.SavedPosition
+        if savedPosCF and typeof(savedPosCF) == "CFrame" then
+            configCopy.SavedPosition = { x = savedPosCF.X, y = savedPosCF.Y, z = savedPosCF.Z }
+        else
+            configCopy.SavedPosition = nil
+        end
         local data = {
-            Config = _G.Config,
+            Config = configCopy,
             Var = {}
         }
         for k, v in pairs(getgenv().__var) do

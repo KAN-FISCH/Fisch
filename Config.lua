@@ -132,14 +132,30 @@ function ConfigModule.SaveConfig(configName)
         makefolder(ConfigModule.ConfigFolder)
     end
 
+    -- Serialize SavedPosition CFrame ke table numerik agar bisa di-JSONEncode
+    local savedPosCF = _G.Config.SavedPosition
+    local configCopy = ConfigModule.DeepCopy(_G.Config)
+    if savedPosCF and typeof(savedPosCF) == "CFrame" then
+        configCopy.SavedPosition = {
+            x = savedPosCF.X, y = savedPosCF.Y, z = savedPosCF.Z,
+            rx = savedPosCF.LookVector.X, ry = savedPosCF.LookVector.Y, rz = savedPosCF.LookVector.Z
+        }
+    else
+        configCopy.SavedPosition = nil
+    end
+
     local data = {
-        Config = _G.Config,
+        Config = configCopy,
         Var = {}
     }
 
     for k, v in pairs(_G.__var) do
         if k ~= "reelConnection" and k ~= "isReeling" then
-            data.Var[k] = v
+            local vv = v
+            if k == "savedPosition" and v and typeof(v) == "CFrame" then
+                vv = { x = v.X, y = v.Y, z = v.Z, rx = v.LookVector.X, ry = v.LookVector.Y, rz = v.LookVector.Z }
+            end
+            data.Var[k] = vv
         end
     end
 
@@ -170,7 +186,14 @@ function ConfigModule.LoadConfig(configName)
             local loadedVar = result.Var or {}
 
             for key, value in pairs(loadedConfig) do
-                if type(value) == "table" then
+                if key == "SavedPosition" then
+                    -- Deserialize table {x,y,z,rx,ry,rz} kembali ke CFrame
+                    if type(value) == "table" and value.x then
+                        _G.Config[key] = CFrame.new(value.x, value.y, value.z)
+                    else
+                        _G.Config[key] = nil
+                    end
+                elseif type(value) == "table" then
                     _G.Config[key] = ConfigModule.DeepCopy(value)
                 else
                     _G.Config[key] = value
@@ -178,7 +201,13 @@ function ConfigModule.LoadConfig(configName)
             end
 
             for key, value in pairs(loadedVar) do
-                if type(value) == "table" then
+                if key == "savedPosition" then
+                    if type(value) == "table" and value.x then
+                        _G.__var[key] = CFrame.new(value.x, value.y, value.z)
+                    else
+                        _G.__var[key] = nil
+                    end
+                elseif type(value) == "table" then
                     _G.__var[key] = ConfigModule.DeepCopy(value)
                 else
                     _G.__var[key] = value
