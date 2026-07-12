@@ -8,6 +8,7 @@ _G.Config = {
     AutoCast = false,
     InstantCast = false,
     AntiAFK = true,
+    LowGraphics = true,
     SelectedNightTotems = {},
     SelectedDayTotems = {},
     AutoReel = false,
@@ -79,6 +80,8 @@ _G.Config = {
     AutoQuestShady = false,
     AutoOpenBait = false,
     AutoExecute = true,
+    DeleteFishModel = false,
+    DeletePlayer = false,
 }
 
 _G.__var = {
@@ -135,11 +138,24 @@ function ConfigModule.SaveConfig(configName)
     -- Serialize SavedPosition CFrame ke table numerik agar bisa di-JSONEncode
     local savedPosCF = _G.Config.SavedPosition
     local configCopy = ConfigModule.DeepCopy(_G.Config)
-    if savedPosCF and typeof(savedPosCF) == "CFrame" then
-        configCopy.SavedPosition = {
-            x = savedPosCF.X, y = savedPosCF.Y, z = savedPosCF.Z,
-            rx = savedPosCF.LookVector.X, ry = savedPosCF.LookVector.Y, rz = savedPosCF.LookVector.Z
-        }
+    if savedPosCF then
+        if typeof(savedPosCF) == "CFrame" then
+            configCopy.SavedPosition = {
+                x = savedPosCF.X, y = savedPosCF.Y, z = savedPosCF.Z,
+                rx = savedPosCF.LookVector.X, ry = savedPosCF.LookVector.Y, rz = savedPosCF.LookVector.Z
+            }
+        elseif type(savedPosCF) == "table" and (savedPosCF.x or savedPosCF.X) then
+            configCopy.SavedPosition = {
+                x = savedPosCF.x or savedPosCF.X,
+                y = savedPosCF.y or savedPosCF.Y,
+                z = savedPosCF.z or savedPosCF.Z,
+                rx = savedPosCF.rx or savedPosCF.RX or 0,
+                ry = savedPosCF.ry or savedPosCF.RY or 0,
+                rz = savedPosCF.rz or savedPosCF.RZ or 0
+            }
+        else
+            configCopy.SavedPosition = nil
+        end
     else
         configCopy.SavedPosition = nil
     end
