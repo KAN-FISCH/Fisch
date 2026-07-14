@@ -2282,6 +2282,15 @@ local function setupGUI()
                 AutoQuestShady.StatusCallback = function(statusString)
                     updateParagraph(shadyStatus, statusString)
                 end
+                -- Tampilkan requirements sekarang juga (bukan "Inactive")
+                task.spawn(function()
+                    task.wait(1)
+                    pcall(function()
+                        if AutoQuestShady.RefreshStatus then
+                            AutoQuestShady.RefreshStatus("Siap (aktifkan toggle untuk mulai)")
+                        end
+                    end)
+                end)
             end
 
             AutosQuest:AddToggle({
@@ -2291,6 +2300,84 @@ local function setupGUI()
                     if AutoQuestShady then
                         AutoQuestShady(value)
                     end
+                end
+            })
+
+            -- ── Bazaar Quest Status Paragraph ──────────────────────
+            local bazaarStatus = AutosQuest:AddParagraph({
+                Title = "Bazaar Quest Status",
+                Content = "Checking..."
+            })
+
+            local function updateBazaarParagraph(text)
+                if not bazaarStatus then return end
+                local ok = pcall(function()
+                    bazaarStatus:Set({ Title = "Bazaar Quest Status", Content = text })
+                end)
+                if not ok then
+                    pcall(function() bazaarStatus:Set(text) end)
+                    pcall(function() bazaarStatus:SetText(text) end)
+                    pcall(function() bazaarStatus:SetContent(text) end)
+                    pcall(function()
+                        local para = bazaarStatus
+                        if typeof(para) == "table" and para.Instance then para = para.Instance end
+                        if typeof(para) == "Instance" then
+                            local desc = para:FindFirstChild("ParagraphContent") or para:FindFirstChildWhichIsA("TextLabel")
+                            if desc then desc.Text = text end
+                        end
+                    end)
+                end
+            end
+
+            if AutoQuestShady then
+                AutoQuestShady.BazaarCallback = function(statusStr)
+                    updateBazaarParagraph(statusStr)
+                end
+                -- Tampilkan status bazaar saat ini sekali
+                pcall(function()
+                    if AutoQuestShady.GetBazaarStatus then
+                        local bs = AutoQuestShady.GetBazaarStatus()
+                        if bs then
+                            local str = ""
+                            if bs.BazaarUnlocked then
+                                str = "✓ Bazaar Terbuka\n✓ Quest 1 (3 Figur) SELESAI\n✓ Quest 2 (Lighthouse) SELESAI"
+                            elseif bs.FindFiguresDone then
+                                str = "✓ Quest 1 (3 Figur) SELESAI\n✗ Quest 2 (Lighthouse) BELUM"
+                            else
+                                str = "✗ Quest 1 (3 Figur) BELUM\n✗ Quest 2 (Lighthouse) BELUM"
+                            end
+                            updateBazaarParagraph(str)
+                        end
+                    end
+                end)
+            end
+
+            -- ── Force Open Bazaar Hatch Button ─────────────────────
+            AutosQuest:AddButton({
+                Title = "Force Open Bazaar Hatch",
+                Callback = function()
+                    pcall(function()
+                        if AutoQuestShady and AutoQuestShady.ForceOpenHatch then
+                            local opened = AutoQuestShady.ForceOpenHatch()
+                            updateBazaarParagraph(opened
+                                and "✓ Hatch berhasil dibuka (client-side)!"
+                                or  "✗ Hatch tidak ditemukan (LighthouseHatch tag)")
+                        end
+                    end)
+                end
+            })
+
+            -- ── Teleport ke Shady Fishing Spot Button ──────────────
+            AutosQuest:AddButton({
+                Title = "Teleport ke Shady Fishing Spot",
+                Callback = function()
+                    pcall(function()
+                        local char = game.Players.LocalPlayer.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            hrp.CFrame = CFrame.new(-1067.4, 130.8, -1163.3)
+                        end
+                    end)
                 end
             })
         end)
