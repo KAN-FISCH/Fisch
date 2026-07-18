@@ -1,70 +1,48 @@
 -- ======================================================================
--- Anti-Lag & Rate Limiting Remote Hook (ShieldTeam Optimizer)
+-- Telemetry & Lag Reduction Hook (ShieldTeam Client Clean)
 -- ======================================================================
-local function initRemoteOptimizer()
-    local success, err = pcall(function()
-        local BlockedRemotes = {}
-        
-        local RateLimits = {
-            ["RE/PassiveVfx/Cleanup"] = {max = 5, interval = 1, lastReset = os.clock(), count = 0},
-            ["Ping"]                  = {max = 1, interval = 1, lastReset = os.clock(), count = 0},
-            ["Set"]                   = {max = 2, interval = 1, lastReset = os.clock(), count = 0},
-            ["chat"]                  = {max = 3, interval = 1, lastReset = os.clock(), count = 0},
-        }
+local function cleanClientSpam()
+    pcall(function()
+        -- 1. Disable Chat System Messages spam
+        local chat = game:GetService("ReplicatedStorage"):FindFirstChild("events")
+            and game.ReplicatedStorage.events:FindFirstChild("chat")
+        if chat then
+            if getconnections then
+                for _, conn in ipairs(getconnections(chat.OnClientEvent)) do
+                    pcall(function() conn:Disable() end)
+                    pcall(function() conn:Disconnect() end)
+                end
+            end
+        end
 
-        local oldFireServer
-        oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
-            local name = self.Name
-            if BlockedRemotes[name] then
-                return
+        -- Try to find and disable chat client script
+        for _, desc in ipairs(game:GetDescendants()) do
+            if desc:IsA("LocalScript") and (desc.Name == "SystemMessages" or desc.Name == "ChatSystemMessages" or desc.Name:lower():find("systemmessage")) then
+                pcall(function()
+                    desc.Enabled = false
+                    desc:Destroy()
+                end)
             end
-            
-            local rl = RateLimits[name]
-            if rl then
-                local now = os.clock()
-                if now - rl.lastReset >= rl.interval then
-                    rl.lastReset = now
-                    rl.count = 0
-                end
-                if rl.count >= rl.max then
-                    return
-                end
-                rl.count = rl.count + 1
-            end
-            
-            return oldFireServer(self, ...)
-        end))
-
-        local oldInvokeServer
-        oldInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
-            local name = self.Name
-            if BlockedRemotes[name] then
-                return
-            end
-            
-            local rl = RateLimits[name]
-            if rl then
-                local now = os.clock()
-                if now - rl.lastReset >= rl.interval then
-                    rl.lastReset = now
-                    rl.count = 0
-                end
-                if rl.count >= rl.max then
-                    return
-                end
-                rl.count = rl.count + 1
-            end
-            
-            return oldInvokeServer(self, ...)
-        end))
-        
-        print("[ShieldTeam] Remote Optimizer Loaded Successfully!")
+        end
     end)
-    if not success then
-        warn("[ShieldTeam] Failed to initialize Remote Optimizer: " .. tostring(err))
-    end
+
+    pcall(function()
+        -- 2. Disable Replion Set event spam
+        local setRemote = game:GetService("ReplicatedStorage"):FindFirstChild("packages")
+            and game.ReplicatedStorage.packages:FindFirstChild("Replion")
+            and game.ReplicatedStorage.packages.Replion:FindFirstChild("Remotes")
+            and game.ReplicatedStorage.packages.Replion.Remotes:FindFirstChild("Set")
+        if setRemote then
+            if getconnections then
+                for _, conn in ipairs(getconnections(setRemote.OnClientEvent)) do
+                    pcall(function() conn:Disable() end)
+                    pcall(function() conn:Disconnect() end)
+                end
+            end
+        end
+    end)
 end
-task.spawn(initRemoteOptimizer)
+task.spawn(cleanClientSpam)
 
 local BaseURL = "https://key.shieldteam.asia/raw/Fisch/"
 local FallbackBaseURL = "https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/"
