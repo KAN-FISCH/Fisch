@@ -299,6 +299,96 @@ local function setupGUI()
             end
     })
 
+    SettingFish:AddSeperator({
+        Title = 'Snap Fish',
+    })
+
+    SettingFish:AddDropdown({
+        Title = "Snap Rarity",
+        Multi = true,
+        Options = {"Trash", "Common", "Uncommon", "Unusual", "Rare", "Legendary", "Mythical", "Exotic", "Secret", "Divine Secret", "Limited", "Special","Gemstone", "Event", "Extinct", "Apex"},
+        Default = _G.__var.SnapRarity or {},
+        Callback = function(val)
+            if _G.ClearSnapCache then _G.ClearSnapCache() end
+            _G.__var.SnapRarity = val
+        end
+    })
+
+    SettingFish:AddDropdown({
+        Title = "Snap Relic",
+        Multi = true,
+        Options = {
+            "Exalted Relic",
+            "Cosmic Relic",
+            "Enchant Relic",
+            "Sovereign Relic",
+            "Twisted Relic",
+        },
+        Default = _G.__var.SnapRelics or {},
+        Callback = function(val)
+            if _G.ClearSnapCache then _G.ClearSnapCache() end
+            _G.__var.SnapRelics = val
+        end
+    })
+
+    SettingFish:AddInput({
+        Title = "Snap Fish Name",
+        Default = _G.__var.SnapTargetManual or "",
+        Placeholder = "Example: Salmon, Shark, Tuna",
+        Callback = function(v)
+            if _G.ClearSnapCache then _G.ClearSnapCache() end
+            _G.__var.SnapTargetManual = v
+        end
+    })
+
+    local finalOptions = {"Shiny", "Sparkling", "Husk", "RainbowCluster", "None"}
+
+    local succeeded, err = pcall(function()
+        local shared = game:GetService("ReplicatedStorage"):WaitForChild("shared")
+        local modules = shared:WaitForChild("modules")
+        local fishing = modules:WaitForChild("fishing")
+        local mutationsModule = fishing:WaitForChild("mutations")
+        local module = require(mutationsModule)
+        local mutations = module.Mutations or module
+
+        local sortedMutations = {}
+        for name, data in pairs(mutations) do
+            if type(data) == "table" then
+                local displayName = data.Display or name
+                table.insert(sortedMutations, displayName)
+            end
+        end
+        table.sort(sortedMutations)
+
+        for _, mut in ipairs(sortedMutations) do
+            if not table.find(finalOptions, mut) then
+                table.insert(finalOptions, mut)
+            end
+        end
+    end)
+
+    if not succeeded then warn("Failed to fetch mutations: " .. tostring(err)) end
+
+    SettingFish:AddDropdown({
+        Title = "Snap Mutation/Trait",
+        Multi = true,
+        Options = finalOptions,
+        Default = _G.__var.SnapMutations or {},
+        Callback = function(v)
+            if _G.ClearSnapCache then _G.ClearSnapCache() end
+            _G.__var.SnapMutations = v
+        end
+    })
+
+    SettingFish:AddToggle({
+        Title = "Enable Auto Snap",
+        Description = "Automatically reset rod if fish doesn't match filters",
+        Default = _G.__var.AutoSnapEnabled or false,
+        Callback = function(v)
+            _G.__var.AutoSnapEnabled = v
+        end
+    })
+
     SettingFish:AddToggle({
         Title = "Auto Execute",
         Default = _G.Config.AutoExecute or false,

@@ -1437,6 +1437,119 @@ task.spawn(function()
     autoExecute()
 end)
 
+local SpearFishingMinigame
+local SpearStabFinish
+local spearProcessing = {}
+
+local function getFishUID(fish)
+    if not fish then return nil end
+    -- Primary: extract hash suffix from model name (e.g. "Red_Snapper_b712f" -> "b712f")
+    local nameUID = fish.Name:match("_([^_]+)$")
+    if nameUID and nameUID ~= "" then return nameUID end
+    -- Fallback: UID attribute on model or hitbox
+    local uid = fish:GetAttribute("UID") or fish:GetAttribute("uid")
+    if not uid and fish:FindFirstChild("Hitbox") then
+        uid = fish.Hitbox:GetAttribute("UID") or fish.Hitbox:GetAttribute("uid")
+    end
+    return uid
+end
+
+local function initSpearServices()
+    if SpearFishingMinigame then return end
+    pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local packages = ReplicatedStorage:WaitForChild("packages")
+        local Net = require(packages:WaitForChild("Net"))
+        SpearFishingMinigame = Net:RemoteFunction("SpearFishing/Minigame")
+        SpearStabFinish = Net:RemoteEvent("Stab/Finish")
+    end)
+end
+
+local function startSpearFarmLoop()
+    initSpearServices()
+    task.spawn(function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        while _G.Config.EnableSpearCatch do
+            local ok, err = pcall(function()
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if not hrp then task.wait(0.5); return end
+
+                local bestFish, bestPart, bestDist = nil, nil, math.huge
+                local targetRarities = _G.Config.SelectedSpearRarities or {}
+
+                local active = workspace:FindFirstChild("active")
+                local rFish = active and active:FindFirstChild("roamingFish")
+                if rFish then
+                    for _, child in ipairs(rFish:GetChildren()) do
+                        if child:IsA("Model") or child:IsA("Folder") then
+                            local rarity = child.Name
+                            if #targetRarities == 0 or table.find(targetRarities, rarity) then
+                                for _, fish in ipairs(child:GetChildren()) do
+                                    if fish:IsA("Model") then
+                                        local part = fish:FindFirstChild("Hitbox") or fish:FindFirstChild("Center") or fish.PrimaryPart
+                                        local fUid = getFishUID(fish)
+                                        if part and fUid and fUid ~= "nil" and not fish:GetAttribute("locked")
+                                            and not spearProcessing[fUid]
+                                        then
+                                            local dist = (part.Position - hrp.Position).Magnitude
+                                            if dist < bestDist then
+                                                bestDist = dist
+                                                bestFish = fish
+                                                bestPart = part
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if bestFish and bestPart then
+                    local uid = getFishUID(bestFish)
+                    if uid and uid ~= "nil" then
+                        spearProcessing[uid] = true
+
+                        local targetPos = bestPart.Position + Vector3.new(0, 5, 0)
+                        hrp.CFrame = CFrame.new(targetPos)
+                        task.wait(0.1)
+
+                        if SpearFishingMinigame then
+                            task.spawn(function()
+                                pcall(function()
+                                    SpearFishingMinigame:InvokeServer(uid, nil, true)
+                                end)
+                            end)
+                            task.wait(0.05)
+                            if SpearStabFinish then
+                                pcall(function()
+                                    SpearStabFinish:FireServer({
+                                        e = 100,
+                                        p = true,
+                                        l = {},
+                                        d = {}
+                                    })
+                                end)
+                            end
+                        end
+
+                        task.wait(0.5)
+                        spearProcessing[uid] = nil
+                    end
+                else
+                    task.wait(1)
+                end
+            end)
+            if not ok then
+                warn("[NewFish5] Error in Spear Farm: " .. tostring(err))
+                task.wait(1)
+            end
+        end
+    end)
+end
+
 local function setupGUI()
     local Window = Speed_Library:CreateWindow({
         Title = "ShieldTeam || NewFish5 || Executor : " .. executorName,
@@ -1889,6 +2002,277 @@ local function setupGUI()
         Default = _G.Config.perfectCastEnabled or 0,
         Callback = function(value)
             _G.Config.perfectCastEnabled = value
+        end
+    })
+
+    -- ── Fishing Zone Section Controls ─────────────────────────────
+    local fishingSpots = {
+        "None", "Moosewood Village", "Roslit Hamlet", "Sunstone Island",
+        "Terrapin Island", "The Depths", "Ancient Isles", "Forsaken Shores",
+        "Crimson Cavern", "Luminescent Cavern", "Lost Jungle", "Crystal Cove"
+    }
+
+    FishingZone:AddDropdown({
+        Title = "Fishing Zone",
+        Options = fishingSpots,
+        Default = _G.Config.selectedZone or "None",
+        Callback = function(selected)
+            if type(selected) == "table" then
+                _G.Config.selectedZone = selected[1] or "None"
+            else
+                _G.Config.selectedZone = selected
+            end
+        end
+    })
+
+    local _tZoneTp = FishingZone:AddToggle({
+        Title = "Auto Fishing Teleport",
+        Content = "Enable/Disable Teleport to Fishing Zone",
+        Default = _G.Config.selectedZoneADS or false,
+        Callback = function(Value)
+            task.spawn(function()
+                _G.Config.selectedZoneADS = Value
+                local TeleportArea = getMod("TeleportArea")
+                if TeleportArea and TeleportArea.TeleportToZone then
+                    if _G.Config.selectedZoneADS then
+                        TeleportArea.TeleportToZone(_G.Config.selectedZone or "None")
+                    else
+                        TeleportArea.TeleportToZone("None")
+                    end
+                end
+            end)
+        end
+    })
+    _regToggle(_tZoneTp, "selectedZoneADS", function(v)
+        _G.Config.selectedZoneADS = v
+        local TeleportArea = getMod("TeleportArea")
+        if TeleportArea and TeleportArea.TeleportToZone then
+            if v then
+                TeleportArea.TeleportToZone(_G.Config.selectedZone or "None")
+            else
+                TeleportArea.TeleportToZone("None")
+            end
+        end
+    end)
+
+    FishingZone:AddSeperator({
+        Title = "Spear Fishing",
+    })
+
+    local detectedRarities = {}
+    
+    local function getRoamingFolders()
+        local active = workspace:FindFirstChild("active")
+        local rFish = active and active:FindFirstChild("roamingFish")
+        if rFish then
+            for _, child in ipairs(rFish:GetChildren()) do
+                if (child:IsA("Model") or child:IsA("Folder")) and not table.find(detectedRarities, child.Name) then
+                    table.insert(detectedRarities, child.Name)
+                end
+            end
+        end
+        table.sort(detectedRarities)
+        return detectedRarities
+    end
+
+    local _tSpearRarities = FishingZone:AddDropdown({
+        Title = "Spear Target Rarities",
+        Multi = true,
+        Options = getRoamingFolders(),
+        Default = _G.Config.SelectedSpearRarities or {},
+        Callback = function(val)
+            _G.Config.SelectedSpearRarities = val
+        end
+    })
+
+    task.spawn(function()
+        local active = workspace:WaitForChild("active", 10)
+        local rFish = active and active:WaitForChild("roamingFish", 10)
+        if rFish then
+            -- 1. Scan folders that already exist now that roamingFish has loaded
+            local current = getRoamingFolders()
+            if #current > 0 then
+                pcall(function()
+                    _tSpearRarities:Refresh(current, _G.Config.SelectedSpearRarities or {})
+                end)
+            end
+            
+            -- 2. Connect to ChildAdded for subsequent additions
+            rFish.ChildAdded:Connect(function(child)
+                if child:IsA("Model") or child:IsA("Folder") then
+                    task.wait(0.5)
+                    local name = child.Name
+                    if not table.find(detectedRarities, name) then
+                        table.insert(detectedRarities, name)
+                        table.sort(detectedRarities)
+                        pcall(function()
+                            _tSpearRarities:Refresh(detectedRarities, _G.Config.SelectedSpearRarities or {})
+                        end)
+                    end
+                end
+            end)
+        end
+    end)
+
+    local _tSpearCatch = FishingZone:AddToggle({
+        Title = "Spear Auto Catch",
+        Content = "Auto catch roaming fish with spear",
+        Default = _G.Config.EnableSpearCatch or false,
+        Callback = function(val)
+            _G.Config.EnableSpearCatch = val
+            if val then
+                startSpearFarmLoop()
+            end
+        end
+    })
+    _regToggle(_tSpearCatch, "EnableSpearCatch", function(v)
+        _G.Config.EnableSpearCatch = v
+        if v then
+            startSpearFarmLoop()
+        end
+    end)
+
+    -- ── Fishing Event Zone Section Controls ───────────────────────
+    FishingEventZone:AddDropdown({
+        Title = "Select Zone Event",
+        Multi = true,
+        Options = {
+            "Orca", "Lovestorm", "Baby Bloop Fish", "Plesiosaur Hunt", "Pliosaur Hunt",
+            "Goldwraith Hunt", "Reef Titan Hunt", "Sunken Reliquary", "Omnithal Hunt",
+            "Bloop Fish", "Moby", "Megalodon", "Mossjaw", "Megalodon Ancient",
+            "Megalodon Phantom", "Great White Shark", "Hammerhead Shark", "Whale Shark",
+            "The Depths - Serpent", "Sovereign Beam", "Isonade (Strange Whirlpool)",
+            "Scylla (Forsaken Veil)", "Blarney McBreeze", "Sea Leviathan Pool",
+            "Animal Pool", "Octophant Pool Without Elephant", "Kraken Pool",
+            "Blue Moon - Sea 2", "Blue Moon - Sea 1", "Lego Pool", "Studolodon Pool",
+            "Mosslurker", "Narwhal", "MossjawHunt", "BrineStorm", "KrakenHunt",
+            "MegHunt", "MoonlitMirage", "ScyllaHunt", "ReefTitan", "FrostwyrmHunt",
+            "The Sanctum Hunt", "The Sanctum Profane Hunt", "DepthsAbsoluteDarkness",
+            "Colossal Blue Dragon", "Colossal Ancient Dragon", "Colossal Ethereal Dragon",
+            "SkeletalLeviathanHunt", "WyvernHunt", "NectarBloom", "RotbloomHunt",
+            "FlowerGuardianHunt"
+        },
+        Default = _G.__var and _G.__var.Hunting_Target or {},
+        Callback = function(Value)
+            if _G.__var then
+                _G.__var.Hunting_Target = Value
+            end
+        end
+    })
+
+    FishingEventZone:AddToggle({
+        Title = "Auto Zone Event",
+        Default = _G.__var and _G.__var.Hunting_Enabled or false,
+        Callback = function(Value)
+            if not _G.__var then return end
+            if Value then
+                _G.__var.Hunting_Enabled = true
+                local lp = Players.LocalPlayer
+                if not _G.__var.savedPosition then
+                    local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        _G.__var.savedPosition = root.CFrame
+                    end
+                end
+
+                task.spawn(function()
+                    while _G.__var and _G.__var.Hunting_Enabled do
+                        task.wait(1)
+                        pcall(function()
+                            local fishingZone = workspace:FindFirstChild("zones") and workspace.zones:FindFirstChild("fishing")
+                            if not fishingZone then return end
+
+                            local targetArray = type(_G.__var.Hunting_Target) == "table" and _G.__var.Hunting_Target or {_G.__var.Hunting_Target}
+                            local target_pool = nil
+                            local target_spawn = nil
+                            local target_name = nil
+
+                            for _, t in ipairs(targetArray) do
+                                if not t or t == "" or t == "Choose Event" then continue end
+                                local temp_pool = nil
+                                local temp_spawn = nil
+
+                                if t == "Orca" then temp_pool = fishingZone:FindFirstChild("Orcas Pool")
+                                elseif t == "Moby" then
+                                    local whale_pool = fishingZone:FindFirstChild("Whales Pool")
+                                    if whale_pool then temp_pool = whale_pool; temp_spawn = whale_pool:FindFirstChild("MobySpawn") end
+                                elseif t == "Megalodon" then temp_pool = fishingZone:FindFirstChild("Megalodon Default")
+                                elseif t == "Mossjaw" then temp_pool = fishingZone:FindFirstChild("Mossjaw")
+                                elseif t == "Megalodon Ancient" then temp_pool = fishingZone:FindFirstChild("Megalodon Ancient")
+                                elseif t == "Megalodon Phantom" then temp_pool = fishingZone:FindFirstChild("Megalodon Phantom")
+                                elseif t == "Great White Shark" then temp_pool = fishingZone:FindFirstChild("Great White Shark")
+                                elseif t == "Hammerhead Shark" then temp_pool = fishingZone:FindFirstChild("Great Hammerhead Shark")
+                                elseif t == "Whale Shark" then temp_pool = fishingZone:FindFirstChild("Whale Shark")
+                                elseif t == "The Depths - Serpent" then temp_pool = fishingZone:FindFirstChild("The Depths - Serpent")
+                                elseif t == "Isonade (Strange Whirlpool)" then temp_pool = fishingZone:FindFirstChild("Isonade")
+                                elseif t == "Scylla (Forsaken Veil)" then temp_pool = fishingZone:FindFirstChild("Forsaken Veil - Scylla") or workspace:FindFirstChild("fish_Scylla")
+                                elseif t == "Blarney McBreeze" then temp_pool = fishingZone:FindFirstChild("Blarney McBreeze")
+                                elseif t == "Sea Leviathan Pool" then temp_pool = fishingZone:FindFirstChild("Sea Leviathan Pool")
+                                elseif t == "Animal Pool" then temp_pool = fishingZone:FindFirstChild("Animal Pool") or fishingZone:FindFirstChild("Animal Pool - Second Sea")
+                                elseif t == "Octophant Pool Without Elephant" then temp_pool = fishingZone:FindFirstChild("Octophant Pool Without Elephant")
+                                elseif t == "Kraken Pool" then temp_pool = fishingZone:FindFirstChild("The Kraken Pool")
+                                elseif t == "Blue Moon - Sea 2" then temp_pool = fishingZone:FindFirstChild("Blue Moon - Second Sea")
+                                elseif t == "Blue Moon - Sea 1" then temp_pool = fishingZone:FindFirstChild("Blue Moon - First Sea")
+                                elseif t == "Lego Pool" then temp_pool = fishingZone:FindFirstChild("LEGO")
+                                elseif t == "Studolodon Pool" then temp_pool = fishingZone:FindFirstChild("LEGO - Studolodon")
+                                elseif t == "Mosslurker" then temp_pool = fishingZone:FindFirstChild("Mosslurker")
+                                elseif t == "Narwhal" then temp_pool = fishingZone:FindFirstChild("Narwhall")
+                                elseif t == "Baby Bloop Fish" then temp_pool = fishingZone:FindFirstChild("Baby Bloop Fish")
+                                elseif t == "Bloop Fish" then temp_pool = fishingZone:FindFirstChild("Bloop Fish") or fishingZone:FindFirstChild("Bloop Fisher")
+                                elseif t == "Sovereign Beam" then
+                                    local tagged = game:GetService("CollectionService"):GetTagged("SovereignBeam")
+                                    if #tagged > 0 then temp_pool = tagged[1] end
+                                else temp_pool = fishingZone:FindFirstChild(t)
+                                end
+
+                                if temp_pool then
+                                    target_pool = temp_pool
+                                    target_spawn = temp_spawn
+                                    target_name = t
+                                    break
+                                end
+                            end
+
+                            if target_pool then
+                                local teleport_pos = nil
+                                if target_name == "Orca" or target_name == "Scylla (Forsaken Veil)" or target_name == "Blarney McBreeze" or target_name == "Sea Leviathan Pool" then
+                                    teleport_pos = CFrame.new(target_pool.Position + Vector3.new(0, 74, 0))
+                                elseif target_name == "Moby" and target_spawn then
+                                    teleport_pos = CFrame.new(target_spawn.Position + Vector3.new(0, 50, 0))
+                                elseif target_name == "Kraken Pool" then
+                                    teleport_pos = CFrame.new(target_pool.Position + Vector3.new(0, 73, 0))
+                                elseif target_name == "Isonade (Strange Whirlpool)" then
+                                    teleport_pos = CFrame.new(target_pool.Position + Vector3.new(20, 115, 20))
+                                else
+                                    teleport_pos = CFrame.new(target_pool.Position + Vector3.new(0, 15, 0))
+                                end
+
+                                local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+                                if root and teleport_pos then
+                                    root.CFrame = teleport_pos
+                                end
+                            end
+                        end)
+                    end
+
+                    if _G.__var and _G.__var.savedPosition then
+                        local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            root.CFrame = _G.__var.savedPosition
+                        end
+                        _G.__var.savedPosition = nil
+                    end
+                end)
+            else
+                _G.__var.Hunting_Enabled = false
+                if _G.__var.savedPosition then
+                    local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.CFrame = _G.__var.savedPosition
+                    end
+                    _G.__var.savedPosition = nil
+                end
+            end
         end
     })
 
