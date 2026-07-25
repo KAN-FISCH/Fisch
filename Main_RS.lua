@@ -1795,8 +1795,51 @@ local function setupGUI()
             _G.Config.AutoNukeEnabled = Value
             if Value then
                 task.spawn(function()
+                    -- Fast win attempt via GC upvalue if executor supports getgc / debug.setupvalue
+                    if getgc and debug and debug.info and debug.setupvalue then
+                        task.spawn(function()
+                            for _, v in pairs(getgc(true)) do
+                                if type(v) == "function" then
+                                    local name = debug.info(v, "n")
+                                    if name == "LoopMinigame" then
+                                        task.spawn(function()
+                                            while _G.Config.AutoNukeEnabled do
+                                                local ok = pcall(function()
+                                                    debug.setupvalue(v, 13, workspace:GetServerTimeNow() - 10)
+                                                end)
+                                                if not ok then break end
+                                                task.wait(0.05)
+                                            end
+                                        end)
+                                    end
+                                end
+                            end
+                        end)
+                    end
+
+                    local function pressButton(button)
+                        if not button then return end
+                        pcall(function()
+                            local mockInput = { UserInputType = Enum.UserInputType.MouseButton1 }
+                            if firesignal then
+                                pcall(function() firesignal(button.Activated, mockInput) end)
+                                pcall(function() firesignal(button.Activated) end)
+                                pcall(function() firesignal(button.MouseButton1Click) end)
+                            end
+                            if getconnections then
+                                for _, c in pairs(getconnections(button.Activated)) do
+                                    pcall(function() c:Fire(mockInput) end)
+                                end
+                                for _, c in pairs(getconnections(button.MouseButton1Click)) do
+                                    pcall(function() c:Fire() end)
+                                end
+                            end
+                        end)
+                    end
+
+                    -- Real-time rotation balancer loop
                     while _G.Config.AutoNukeEnabled do
-                        task.wait(0.1)
+                        task.wait()
                         pcall(function()
                             local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
                             local nukeGui = playerGui and playerGui:FindFirstChild("NukeMinigame")
@@ -1804,22 +1847,19 @@ local function setupGUI()
                                 local center = nukeGui:FindFirstChild("Center")
                                 local marker = center and center:FindFirstChild("Marker")
                                 local pointer = marker and marker:FindFirstChild("Pointer")
-                                local frame = pointer and pointer:FindFirstChild("Frame")
+                                local frame = pointer and (pointer:FindFirstChild("Frame") or pointer)
                                 local leftBtn = center and center:FindFirstChild("Left")
                                 local rightBtn = center and center:FindFirstChild("Right")
                                 
-                                if frame and leftBtn and rightBtn then
-                                    local function pressButton(button)
-                                        if getconnections then
-                                            for _, connection in pairs(getconnections(button.Activated)) do
-                                                connection:Fire({ UserInputType = Enum.UserInputType.Keyboard })
-                                            end
-                                        end
+                                if pointer then
+                                    local rot = pointer.Rotation
+                                    if rot == 0 and frame then
+                                        rot = frame.AbsoluteRotation
                                     end
-                                    local rot = frame.AbsoluteRotation
-                                    if rot < -35 then
+
+                                    if rot < -5 then
                                         pressButton(rightBtn)
-                                    elseif rot > 35 then
+                                    elseif rot > 5 then
                                         pressButton(leftBtn)
                                     end
                                 end
