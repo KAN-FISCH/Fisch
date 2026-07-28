@@ -1787,13 +1787,98 @@ local function setupGUI()
         if AutoShake then AutoShake(v) end
     end)
 
+    local _tNoActionSafe = MainSection:AddToggle({
+        Title = "No Action Safe",
+        Description = "Reset rod jika stuck pas nyemplung/narik ikan >10 dtk",
+        Default = _G.Config.NoActionSafe ~= false,
+        Callback = function(enabled)
+            _G.Config.NoActionSafe = enabled
+            if enabled then
+                if _G.__noActionSafeRunning then return end
+                _G.__noActionSafeRunning = true
+                task.spawn(function()
+                    local lastFishTick = tick()
+                    while _G.Config.NoActionSafe do
+                        task.wait(1)
+                        local char = Players.LocalPlayer.Character
+                        if not char then continue end
+                        local hum = char:FindFirstChildOfClass("Humanoid")
+                        local tool = char:FindFirstChildOfClass("Tool")
+
+                        local isRod = false
+                        if tool then
+                            if tool:FindFirstChild("events") or tool:FindFirstChild("rod/client") or (tool:FindFirstChild("rod") and tool.rod:FindFirstChild("client")) then
+                                isRod = true
+                            end
+                        end
+
+                        if isRod then
+                            local recentCatch = false
+                            if type(_G.LastCatchTick) == "number" and (tick() - _G.LastCatchTick < 5) then
+                                recentCatch = true
+                            end
+                            if type(_G.LastCaughtEventTick) == "number" and (tick() - _G.LastCaughtEventTick < 10) then
+                                recentCatch = true
+                            end
+
+                            if recentCatch then
+                                lastFishTick = tick()
+                            end
+                            if tick() - lastFishTick >= 10 then
+                                if _G.Config.DiscordWebhookEnabled and _G.Config.DiscordWebhookURL and _G.Config.DiscordWebhookURL ~= "" then
+                                    task.spawn(function()
+                                        pcall(function()
+                                            local requestFunc = request or http_request or (http and http.request) or (syn and syn.request)
+                                            if requestFunc then
+                                                local payload = {
+                                                    content = "@everyone",
+                                                    embeds = {{
+                                                        title = "⚠️ No Action Safe Triggered!",
+                                                        description = "Rod terjebak lebih dari 10 detik. Melakukan reset otomatis.",
+                                                        color = 16711680,
+                                                        footer = { text = "Shield Team Client" },
+                                                        timestamp = os.date("!%Y-%m-%dT%H:%M:%S")
+                                                    }}
+                                                }
+                                                requestFunc({
+                                                    Url = _G.Config.DiscordWebhookURL,
+                                                    Method = "POST",
+                                                    Headers = { ["Content-Type"] = "application/json" },
+                                                    Body = game:GetService("HttpService"):JSONEncode(payload)
+                                                })
+                                            end
+                                        end)
+                                    end)
+                                end
+
+                                pcall(function()
+                                    char:SetAttribute("Reeling", nil)
+                                    if hum then
+                                        hum:UnequipTools()
+                                    end
+                                end)
+                                lastFishTick = tick()
+                            end
+                        else
+                            lastFishTick = tick()
+                        end
+                    end
+                    _G.__noActionSafeRunning = false
+                end)
+            end
+        end
+    })
+    _regToggle(_tNoActionSafe, "NoActionSafe", function(v) _G.Config.NoActionSafe = v end)
+
     local _tBalanceNuke = MainSection:AddToggle({
         Title = "Balance Nuke",
         Description = "Auto completes Love Nuke and Atomic Nuke minigames",
-        Default = _G.Config.AutoNukeEnabled or false,
+        Default = _G.Config.AutoNukeEnabled ~= false,
         Callback = function(Value)
             _G.Config.AutoNukeEnabled = Value
             if Value then
+                if _G.__autoNukeRunning then return end
+                _G.__autoNukeRunning = true
                 task.spawn(function()
                     -- Fast win attempt via GC upvalue if executor supports getgc / debug.setupvalue
                     if getgc and debug and debug.info and debug.setupvalue then
@@ -1866,6 +1951,7 @@ local function setupGUI()
                             end
                         end)
                     end
+                    _G.__autoNukeRunning = false
                 end)
             end
         end
