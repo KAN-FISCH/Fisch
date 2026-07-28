@@ -62,54 +62,44 @@ local function getCastRemote()
     return castRemote
 end
 
--- Rod helper: Cek Character -> Backpack auto-equip -> Tool fallback
+-- Rod helper: Return tool di Character, auto-equip dari Backpack HANYA jika isEquipRpd true
 local function getRod(char)
     if not char then return nil end
     
     -- 1. Cek Tool yang sudah ter-equip di Character
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and (v:FindFirstChild("events") or v:FindFirstChild("rod/client") or (v:FindFirstChild("rod") and v.rod:FindFirstChild("client")) or v.Name:lower():match("rod")) then
-            return v
-        end
-    end
-    
-    -- 2. Dapatkan nama rod dari PlayerStats jika ada
-    local rodName = nil
-    pcall(function()
-        rodName = workspace.PlayerStats[LocalPlayer.Name].T[LocalPlayer.Name].Stats.rod.Value
-    end)
-    
-    local bp = LocalPlayer:FindFirstChild("Backpack")
-    if bp then
-        local bpRod = nil
-        if rodName and rodName ~= "" then
-            bpRod = bp:FindFirstChild(rodName)
-        end
-        
-        -- Fallback: Jika tidak ketemu dari PlayerStats, cari Tool di Backpack yang ber-rod
-        if not bpRod then
-            for _, item in ipairs(bp:GetChildren()) do
-                if item:IsA("Tool") and (item:FindFirstChild("events") or item:FindFirstChild("rod") or item.Name:lower():match("rod")) then
-                    bpRod = item
-                    break
-                end
-            end
-        end
-        
-        if bpRod then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                pcall(function() hum:EquipTool(bpRod) end)
-                task.wait(0.05)
-                return char:FindFirstChild(bpRod.Name) or bpRod
-            end
-        end
-    end
-    
-    -- 3. Fallback akhir: return sebarang Tool di Character
-    for _, v in ipairs(char:GetChildren()) do
         if v:IsA("Tool") then
             return v
+        end
+    end
+    
+    -- 2. Auto-equip dari Backpack HANYA jika _G.Config.isEquipRpd aktif
+    if _G.Config and _G.Config.isEquipRpd then
+        local rodName = nil
+        pcall(function()
+            rodName = workspace.PlayerStats[LocalPlayer.Name].T[LocalPlayer.Name].Stats.rod.Value
+        end)
+        
+        local bp = LocalPlayer:FindFirstChild("Backpack")
+        if bp then
+            local bpRod = (rodName and rodName ~= "") and bp:FindFirstChild(rodName)
+            if not bpRod then
+                for _, item in ipairs(bp:GetChildren()) do
+                    if item:IsA("Tool") and (item:FindFirstChild("events") or item:FindFirstChild("rod") or item.Name:lower():match("rod")) then
+                        bpRod = item
+                        break
+                    end
+                end
+            end
+            
+            if bpRod then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    pcall(function() hum:EquipTool(bpRod) end)
+                    task.wait(0.05)
+                    return char:FindFirstChild(bpRod.Name) or bpRod
+                end
+            end
         end
     end
     
