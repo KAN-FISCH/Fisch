@@ -62,44 +62,23 @@ local function getCastRemote()
     return castRemote
 end
 
--- Rod helper: Return tool di Character, auto-equip dari Backpack HANYA jika isEquipRpd true
+-- Rod helper: Cek Character -> Backpack auto-equip -> Tool fallback
 local function getRod(char)
     if not char then return nil end
+    local rodName = nil
+    pcall(function()
+        rodName = workspace.PlayerStats[LocalPlayer.Name].T[LocalPlayer.Name].Stats.rod.Value
+    end)
     
-    -- 1. Cek Tool yang sudah ter-equip di Character
+    if rodName and rodName ~= "" then
+        local rod = char:FindFirstChild(rodName)
+        if rod then return rod end
+    end
+    
+    -- Fallback: return sebarang Tool di Character
     for _, v in ipairs(char:GetChildren()) do
         if v:IsA("Tool") then
             return v
-        end
-    end
-    
-    -- 2. Auto-equip dari Backpack HANYA jika _G.Config.isEquipRpd aktif
-    if _G.Config and _G.Config.isEquipRpd then
-        local rodName = nil
-        pcall(function()
-            rodName = workspace.PlayerStats[LocalPlayer.Name].T[LocalPlayer.Name].Stats.rod.Value
-        end)
-        
-        local bp = LocalPlayer:FindFirstChild("Backpack")
-        if bp then
-            local bpRod = (rodName and rodName ~= "") and bp:FindFirstChild(rodName)
-            if not bpRod then
-                for _, item in ipairs(bp:GetChildren()) do
-                    if item:IsA("Tool") and (item:FindFirstChild("events") or item:FindFirstChild("rod") or item.Name:lower():match("rod")) then
-                        bpRod = item
-                        break
-                    end
-                end
-            end
-            
-            if bpRod then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    pcall(function() hum:EquipTool(bpRod) end)
-                    task.wait(0.05)
-                    return char:FindFirstChild(bpRod.Name) or bpRod
-                end
-            end
         end
     end
     
