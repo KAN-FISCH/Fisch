@@ -1746,18 +1746,14 @@ local function setupGUI()
 
     local _tBobber = MainSection:AddToggle({
         Title = "Instant Bobber",
-        Default = _G.Config.AutoCast or false,
+        Default = _G.Config.InstantCast or false,
         Callback = function(value)
-            _G.Config.AutoCast = value
             _G.Config.InstantCast = value
-            if AutoCast then AutoCast(value) end
             if InstantBobber then InstantBobber(value) end
         end
     })
-    _regToggle(_tBobber, "AutoCast", function(v)
-        _G.Config.AutoCast = v
+    _regToggle(_tBobber, "InstantCast", function(v)
         _G.Config.InstantCast = v
-        if AutoCast then AutoCast(v) end
         if InstantBobber then InstantBobber(v) end
     end)
 
