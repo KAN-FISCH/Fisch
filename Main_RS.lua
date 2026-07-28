@@ -1790,7 +1790,7 @@ local function setupGUI()
     local _tNoActionSafe = MainSection:AddToggle({
         Title = "No Action Safe",
         Description = "Reset rod jika stuck pas nyemplung/narik ikan >10 dtk",
-        Default = _G.Config.NoActionSafe ~= false,
+        Default = _G.Config.NoActionSafe or false,
         Callback = function(enabled)
             _G.Config.NoActionSafe = enabled
             if enabled then
@@ -1873,7 +1873,7 @@ local function setupGUI()
     local _tBalanceNuke = MainSection:AddToggle({
         Title = "Balance Nuke",
         Description = "Auto completes Love Nuke and Atomic Nuke minigames",
-        Default = _G.Config.AutoNukeEnabled ~= false,
+        Default = _G.Config.AutoNukeEnabled or false,
         Callback = function(Value)
             _G.Config.AutoNukeEnabled = Value
             if Value then

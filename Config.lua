@@ -80,8 +80,8 @@ _G.Config = {
     AutoQuestShady = false,
     AutoOpenBait = false,
     AutoExecute = true,
-    NoActionSafe = true,
-    AutoNukeEnabled = true,
+    NoActionSafe = false,
+    AutoNukeEnabled = false,
     DeleteFishModel = false,
     DeletePlayer = false,
 }
