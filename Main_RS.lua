@@ -1508,6 +1508,16 @@ local function startSpearFarmLoop()
                 end
 
                 if bestFish and bestPart then
+                    local char = LocalPlayer.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    if not hrp then task.wait(0.5); return end
+
+                    if hum then
+                        pcall(function()
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+                        end)
+                    end
                     local uid = getFishUID(bestFish)
                     if uid and uid ~= "nil" then
                         spearProcessing[uid] = true
@@ -1517,6 +1527,7 @@ local function startSpearFarmLoop()
                         task.wait(0.1)
 
                         if SpearFishingMinigame then
+                            
                             task.spawn(function()
                                 pcall(function()
                                     SpearFishingMinigame:InvokeServer(uid, nil, true)
