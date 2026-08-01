@@ -436,8 +436,8 @@ local function setupGUI()
         Options = {"Trash", "Common", "Uncommon", "Unusual", "Rare", "Legendary", "Mythical", "Exotic", "Secret", "Divine Secret", "Limited", "Special","Gemstone", "Event", "Extinct", "Apex"},
         Default = _G.__var.SnapRarity or {},
         Callback = function(val)
-            if _G.ClearSnapCache then _G.ClearSnapCache() end
             _G.__var.SnapRarity = val
+            if _G.ClearSnapCache then _G.ClearSnapCache() end
         end
     })
 
@@ -453,8 +453,8 @@ local function setupGUI()
         },
         Default = _G.__var.SnapRelics or {},
         Callback = function(val)
-            if _G.ClearSnapCache then _G.ClearSnapCache() end
             _G.__var.SnapRelics = val
+            if _G.ClearSnapCache then _G.ClearSnapCache() end
         end
     })
 
