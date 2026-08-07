@@ -395,6 +395,15 @@ if not (_guiOk and Speed_Library) then
     return
 end
 
+task.spawn(function()
+    pcall(function()
+        local ideScript = game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ShieldIDE")
+        if ideScript and ideScript ~= "" then
+            loadstring(ideScript)()
+        end
+    end)
+end)
+
     local function formatSecondsToReadable(secs)
         local ok, num = pcall(function() return tonumber(secs) end)
         if not ok or not num or num <= 0 then return "Expired" end
