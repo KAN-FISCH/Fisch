@@ -1821,66 +1821,65 @@ local function setupGUI()
                     while _G.Config.NoActionSafe do
                         task.wait(1)
                         local char = Players.LocalPlayer.Character
-                        if not char then continue end
-                        local hum = char:FindFirstChildOfClass("Humanoid")
-                        local tool = char:FindFirstChildOfClass("Tool")
-
-                        local isRod = false
-                        if tool then
-                            if tool:FindFirstChild("events") or tool:FindFirstChild("rod/client") or (tool:FindFirstChild("rod") and tool.rod:FindFirstChild("client")) then
-                                isRod = true
-                            end
-                        end
-
-                        if isRod then
-                            local recentCatch = false
-                            if type(_G.LastCatchTick) == "number" and (tick() - _G.LastCatchTick < 5) then
-                                recentCatch = true
-                            end
-                            if type(_G.LastCaughtEventTick) == "number" and (tick() - _G.LastCaughtEventTick < 10) then
-                                recentCatch = true
-                            end
-
-                            if recentCatch then
-                                lastFishTick = tick()
-                            end
-                            if tick() - lastFishTick >= 10 then
-                                if _G.Config.DiscordWebhookEnabled and _G.Config.DiscordWebhookURL and _G.Config.DiscordWebhookURL ~= "" then
-                                    task.spawn(function()
-                                        pcall(function()
-                                            local requestFunc = request or http_request or (http and http.request) or (syn and syn.request)
-                                            if requestFunc then
-                                                local payload = {
-                                                    content = "@everyone",
-                                                    embeds = {{
-                                                        title = "⚠️ No Action Safe Triggered!",
-                                                        description = "Rod terjebak lebih dari 10 detik. Melakukan reset otomatis.",
-                                                        color = 16711680,
-                                                        footer = { text = "Shield Team Client" },
-                                                        timestamp = os.date("!%Y-%m-%dT%H:%M:%S")
-                                                    }}
-                                                }
-                                                requestFunc({
-                                                    Url = _G.Config.DiscordWebhookURL,
-                                                    Method = "POST",
-                                                    Headers = { ["Content-Type"] = "application/json" },
-                                                    Body = game:GetService("HttpService"):JSONEncode(payload)
-                                                })
-                                            end
-                                        end)
-                                    end)
+                        if char then
+                            local hum = char:FindFirstChildOfClass("Humanoid")
+                            local tool = char:FindFirstChildOfClass("Tool")
+                            local isRod = false
+                            if tool then
+                                if tool:FindFirstChild("events") or tool:FindFirstChild("rod/client") or (tool:FindFirstChild("rod") and tool.rod:FindFirstChild("client")) then
+                                    isRod = true
                                 end
+                            end
 
-                                pcall(function()
-                                    char:SetAttribute("Reeling", nil)
-                                    if hum then
-                                        hum:UnequipTools()
+                            if isRod then
+                                local recentCatch = false
+                                if type(_G.LastCatchTick) == "number" and (tick() - _G.LastCatchTick < 5) then
+                                    recentCatch = true
+                                end
+                                if type(_G.LastCaughtEventTick) == "number" and (tick() - _G.LastCaughtEventTick < 10) then
+                                    recentCatch = true
+                                end
+                                if recentCatch then
+                                    lastFishTick = tick()
+                                end
+                                if tick() - lastFishTick >= 10 then
+                                    if _G.Config.DiscordWebhookEnabled and _G.Config.DiscordWebhookURL and _G.Config.DiscordWebhookURL ~= "" then
+                                        task.spawn(function()
+                                            pcall(function()
+                                                local requestFunc = request or http_request or (http and http.request) or (syn and syn.request)
+                                                if requestFunc then
+                                                    local payload = {
+                                                        content = "@everyone",
+                                                        embeds = {{
+                                                            title = "⚠️ No Action Safe Triggered!",
+                                                            description = "Rod terjebak lebih dari 10 detik. Melakukan reset otomatis.",
+                                                            color = 16711680,
+                                                            footer = { text = "Shield Team Client" },
+                                                            timestamp = os.date("!%Y-%m-%dT%H:%M:%S")
+                                                        }}
+                                                    }
+                                                    requestFunc({
+                                                        Url = _G.Config.DiscordWebhookURL,
+                                                        Method = "POST",
+                                                        Headers = { ["Content-Type"] = "application/json" },
+                                                        Body = game:GetService("HttpService"):JSONEncode(payload)
+                                                    })
+                                                end
+                                            end)
+                                        end)
                                     end
-                                end)
+
+                                    pcall(function()
+                                        char:SetAttribute("Reeling", nil)
+                                        if hum then
+                                            hum:UnequipTools()
+                                        end
+                                    end)
+                                    lastFishTick = tick()
+                                end
+                            else
                                 lastFishTick = tick()
                             end
-                        else
-                            lastFishTick = tick()
                         end
                     end
                     _G.__noActionSafeRunning = false
@@ -2334,41 +2333,21 @@ local function setupGUI()
                             local target_name = nil
 
                             for _, t in ipairs(targetArray) do
-                                if not t or t == "" or t == "Choose Event" then continue end
                                 local temp_pool = nil
                                 local temp_spawn = nil
-
-                                if t == "Orca" then temp_pool = fishingZone:FindFirstChild("Orcas Pool")
+                                if t == "Orca" then
+                                    temp_pool = fishingZone:FindFirstChild("Orcas Pool")
                                 elseif t == "Moby" then
                                     local whale_pool = fishingZone:FindFirstChild("Whales Pool")
-                                    if whale_pool then temp_pool = whale_pool; temp_spawn = whale_pool:FindFirstChild("MobySpawn") end
-                                elseif t == "Megalodon" then temp_pool = fishingZone:FindFirstChild("Megalodon Default")
-                                elseif t == "Mossjaw" then temp_pool = fishingZone:FindFirstChild("Mossjaw")
-                                elseif t == "Megalodon Ancient" then temp_pool = fishingZone:FindFirstChild("Megalodon Ancient")
-                                elseif t == "Megalodon Phantom" then temp_pool = fishingZone:FindFirstChild("Megalodon Phantom")
-                                elseif t == "Great White Shark" then temp_pool = fishingZone:FindFirstChild("Great White Shark")
-                                elseif t == "Hammerhead Shark" then temp_pool = fishingZone:FindFirstChild("Great Hammerhead Shark")
-                                elseif t == "Whale Shark" then temp_pool = fishingZone:FindFirstChild("Whale Shark")
-                                elseif t == "The Depths - Serpent" then temp_pool = fishingZone:FindFirstChild("The Depths - Serpent")
-                                elseif t == "Isonade (Strange Whirlpool)" then temp_pool = fishingZone:FindFirstChild("Isonade")
-                                elseif t == "Scylla (Forsaken Veil)" then temp_pool = fishingZone:FindFirstChild("Forsaken Veil - Scylla") or workspace:FindFirstChild("fish_Scylla")
-                                elseif t == "Blarney McBreeze" then temp_pool = fishingZone:FindFirstChild("Blarney McBreeze")
-                                elseif t == "Sea Leviathan Pool" then temp_pool = fishingZone:FindFirstChild("Sea Leviathan Pool")
-                                elseif t == "Animal Pool" then temp_pool = fishingZone:FindFirstChild("Animal Pool") or fishingZone:FindFirstChild("Animal Pool - Second Sea")
-                                elseif t == "Octophant Pool Without Elephant" then temp_pool = fishingZone:FindFirstChild("Octophant Pool Without Elephant")
-                                elseif t == "Kraken Pool" then temp_pool = fishingZone:FindFirstChild("The Kraken Pool")
-                                elseif t == "Blue Moon - Sea 2" then temp_pool = fishingZone:FindFirstChild("Blue Moon - Second Sea")
-                                elseif t == "Blue Moon - Sea 1" then temp_pool = fishingZone:FindFirstChild("Blue Moon - First Sea")
-                                elseif t == "Lego Pool" then temp_pool = fishingZone:FindFirstChild("LEGO")
-                                elseif t == "Studolodon Pool" then temp_pool = fishingZone:FindFirstChild("LEGO - Studolodon")
-                                elseif t == "Mosslurker" then temp_pool = fishingZone:FindFirstChild("Mosslurker")
-                                elseif t == "Narwhal" then temp_pool = fishingZone:FindFirstChild("Narwhall")
-                                elseif t == "Baby Bloop Fish" then temp_pool = fishingZone:FindFirstChild("Baby Bloop Fish")
-                                elseif t == "Bloop Fish" then temp_pool = fishingZone:FindFirstChild("Bloop Fish") or fishingZone:FindFirstChild("Bloop Fisher")
+                                    if whale_pool then
+                                        temp_pool = whale_pool
+                                        temp_spawn = whale_pool:FindFirstChild("MobySpawn")
+                                    end
                                 elseif t == "Sovereign Beam" then
                                     local tagged = game:GetService("CollectionService"):GetTagged("SovereignBeam")
                                     if #tagged > 0 then temp_pool = tagged[1] end
-                                else temp_pool = fishingZone:FindFirstChild(t)
+                                else
+                                    temp_pool = fishingZone:FindFirstChild(t)
                                 end
 
                                 if temp_pool then
@@ -2995,19 +2974,39 @@ local function setupGUI()
         end
     })
 
+    local freezeConn = nil
     local function SetFreezeCharacter(enabled)
         _G.Config.FreezeCharacter = enabled
-        local player = game.Players.LocalPlayer
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.Anchored = enabled
+        if enabled then
+            if not freezeConn then
+                freezeConn = game:GetService("RunService").Heartbeat:Connect(function()
+                    if _G.Config and _G.Config.FreezeCharacter then
+                        local char = game.Players.LocalPlayer.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            hrp.Anchored = true
+                            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                            hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                        end
+                    end
+                end)
+            end
+        else
+            if freezeConn then
+                freezeConn:Disconnect()
+                freezeConn = nil
+            end
+            local char = game.Players.LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.Anchored = false
+            end
         end
     end
 
     if not getgenv()._freezeCharAddedConn then
         getgenv()._freezeCharAddedConn = game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
-            if _G.Config.FreezeCharacter then
+            if _G.Config and _G.Config.FreezeCharacter then
                 local hrp = char:WaitForChild("HumanoidRootPart", 5)
                 if hrp then
                     hrp.Anchored = true
@@ -3053,6 +3052,54 @@ local function setupGUI()
     })
 
     MiscSection:AddToggle({
+        Title = "Remove Fog",
+        Default = _G.Config.RemoveFog or false,
+        Callback = function(value)
+            _G.Config.RemoveFog = value
+            local MiscFeatures = getMod("MiscFeatures")
+            if MiscFeatures and MiscFeatures.SetRemoveFog then
+                MiscFeatures.SetRemoveFog(value)
+            end
+        end
+    })
+
+    MiscSection:AddToggle({
+        Title = "Boost FPS / Optimize",
+        Default = _G.Config.BoostFPS or false,
+        Callback = function(value)
+            _G.Config.BoostFPS = value
+            local MiscFeatures = getMod("MiscFeatures")
+            if MiscFeatures and MiscFeatures.SetBoostFPS then
+                MiscFeatures.SetBoostFPS(value)
+            end
+        end
+    })
+
+    MiscSection:AddToggle({
+        Title = "Black Screen (AFK Saver)",
+        Default = _G.Config.BlackScreen or false,
+        Callback = function(value)
+            _G.Config.BlackScreen = value
+            local MiscFeatures = getMod("MiscFeatures")
+            if MiscFeatures and MiscFeatures.SetScreenSaver then
+                MiscFeatures.SetScreenSaver(value, "Black")
+            end
+        end
+    })
+
+    MiscSection:AddToggle({
+        Title = "White Screen (AFK Saver)",
+        Default = _G.Config.WhiteScreen or false,
+        Callback = function(value)
+            _G.Config.WhiteScreen = value
+            local MiscFeatures = getMod("MiscFeatures")
+            if MiscFeatures and MiscFeatures.SetScreenSaver then
+                MiscFeatures.SetScreenSaver(value, "White")
+            end
+        end
+    })
+
+    MiscSection:AddToggle({
         Title = "Low Graphics (Level 1)",
         Default = _G.Config.LowGraphics or false,
         Callback = function(value)
@@ -3080,6 +3127,30 @@ local function setupGUI()
         Default = false,
         Callback = function(value)
             if ESP then ESP("Players", value) end
+        end
+    })
+
+    EspCharacterSection:AddToggle({
+        Title = "ESP NPC",
+        Default = false,
+        Callback = function(value)
+            if ESP then ESP("NPC", value) end
+        end
+    })
+
+    EspCharacterSection:AddToggle({
+        Title = "ESP Hunt / Events (Megalodon)",
+        Default = false,
+        Callback = function(value)
+            if ESP then ESP("Zone", value) end
+        end
+    })
+
+    EspCharacterSection:AddToggle({
+        Title = "ESP Roaming Fish",
+        Default = false,
+        Callback = function(value)
+            if ESP then ESP("Roaming", value) end
         end
     })
     
