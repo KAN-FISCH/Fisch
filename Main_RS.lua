@@ -2271,6 +2271,16 @@ local function setupGUI()
         end
     })
     _regToggle(_t, "AutoSell", function(v) if AutoSell then AutoSell(v) end end)
+    local _sInterval = AutosSection:AddSlider({
+        Title = "Auto Sell Interval (Minutes)",
+        Min = 10,
+        Max = 30,
+        Default = _G.Config.AutoSellInterval or 20,
+        Callback = function(value)
+            _G.Config.AutoSellInterval = value
+        end
+    })
+    _regToggle(_sInterval, "AutoSellInterval", function(v) _G.Config.AutoSellInterval = v end)
     getgenv().__var = {
         reelConnection = nil,
         autoReelEnabled = true,
