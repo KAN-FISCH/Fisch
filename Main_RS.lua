@@ -35,8 +35,8 @@ local function cleanClientSpam()
     end)
 end
 task.spawn(cleanClientSpam)
-local BaseURL = "https://key.shieldteam.asia/raw/Fisch/"
-local FallbackBaseURL = "https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/"
+local BaseURL = "https://raw.githubusercontent.com/KAN-FISCH/FischTes/refs/heads/main/"
+local FallbackBaseURL = "https://raw.githubusercontent.com/KAN-FISCH/FischTes/refs/heads/main/"
 local function httpGetWithTimeout(url, timeout)
     local result = nil
     local success = false
@@ -330,22 +330,22 @@ local AutoQuestShady = getMod("AutoQuestShady")
 local executorName = Utils and Utils.DetectExecutor() or "Unknown"
 local Speed_Library
 pcall(function()
-    if readfile and isfile and isfile("ShielDTeam/NewFish5_Source/ShielD_UILib.lua") then
-        Speed_Library = loadstring(readfile("ShielDTeam/NewFish5_Source/ShielD_UILib.lua"))()
+    if readfile and isfile and isfile("ShielDTeam/GUIENC.lua") then
+        Speed_Library = loadstring(readfile("ShielDTeam/GUIENC.lua"))()
     elseif game and game.HttpGet then
-        Speed_Library = loadstring(game:HttpGet("https://key.shieldteam.asia/raw/Fisch/ShielD_UILib.lua"))()
+        Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/FischTes/refs/heads/main/GUIENC.lua"))()
     end
 end)
 if not Speed_Library then
-    Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ShielD_UILib.lua"))()
+    Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/FischTes/refs/heads/main/GUIENC.lua"))()
 end
 if not Speed_Library then
-    warn("[NewFish5] Gagal load ShielD_UILib!")
+    warn("[NewFish5] Gagal load GUIENC!")
     return
 end
 task.spawn(function()
     pcall(function()
-        local ideScript = game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ShieldIDE")
+        local ideScript = game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/FischTes/refs/heads/main/ShieldIDE")
         if ideScript and ideScript ~= "" then
             loadstring(ideScript)()
         end
@@ -384,43 +384,10 @@ end)
         return string.format("%02d/%02d/%04d %02d:%02d", t.day, t.month, t.year, t.hour, t.min)
     end
     local function validateKey(Key)
-        local HWID = getgenv().CustomClientId or getgenv().CustomHWID or (typeof(gethwid) == "function" and gethwid()) or game:GetService("RbxAnalyticsService"):GetClientId()
-        local url = "https://key.shieldteam.asia/api/validate?key=" .. tostring(Key) .. "&hwid=" .. HWID
-        print(HWID)
-        local success, response = pcall(function()
-            return game:HttpGet(url)
-        end)
-        if success then
-            local Http = game:GetService("HttpService")
-            local data = nil
-            local jsonSuccess, jsonErr = pcall(function()
-                data = Http:JSONDecode(response)
-            end)
-            if jsonSuccess and data then
-                if data.status then
-                    local sisaWaktu = "Active"
-                    if data.timeLeft and tonumber(data.timeLeft) then
-                        sisaWaktu = formatSecondsToReadable(data.timeLeft)
-                    end
-                    local waktuExpired = "Active"
-                    local rawExpiry = data.expiry or data.expired or data.exp
-                    if rawExpiry and tonumber(rawExpiry) then
-                        waktuExpired = formatTimestamp(rawExpiry)
-                    elseif data.timeLeft and tonumber(data.timeLeft) then
-                        local tl = tonumber(data.timeLeft)
-                        local expiryTs = os.time() + math.floor(tl)
-                        waktuExpired = formatTimestamp(expiryTs)
-                    end
-                    return data.status, {
-                        timeLeft = sisaWaktu,
-                        expiry   = waktuExpired,
-                    }
-                else
-                    return false, data.msg or "Key tidak valid."
-                end
-            end
-        end
-        return false, "Gagal terhubung ke server validasi."
+        return true, {
+            timeLeft = "Active (Unlocked)",
+            expiry   = "Permanent",
+        }
     end
     local function saveSavedKey(Key)
         if writefile then
@@ -1468,13 +1435,22 @@ local function setupGUI()
     local Info        = GrpMain:CreateTab({ "Info",     "", "Informasi & Event" })
     local FishingTab  = GrpMain:CreateTab({ "Fishing",  "", "Auto Fishing & Cast" })
     local ShopTab     = GrpMain:CreateTab({ "Shop",     "", "Auto Shop" })
-    local Exclusive   = GrpMore:CreateTab({ "Exclusive", "", "Fitur Eksklusif", Locked = true })
-    local AutosTab    = GrpMore:CreateTab({ "Autos",     "", "Auto Features", Locked = true })
+    local Exclusive   = GrpMore:CreateTab({ "Exclusive", "", "Fitur Eksklusif" })
+    local AutosTab    = GrpMore:CreateTab({ "Autos",     "", "Auto Features" })
     local AreaTab     = GrpMore:CreateTab({ "Area/TP",   "", "Area & Teleport"})
-    local EspTab      = GrpMore:CreateTab({ "ESP",       "", "ESP & Visuals", Locked = true })
-    local Misc        = GrpSettings:CreateTab({ "Misc",    "", "Misc & Utils", Locked = true })
-    local SettingsTab = GrpSettings:CreateTab({ "Setting", "", "Pengaturan", Locked = true })
+    local EspTab      = GrpMore:CreateTab({ "ESP",       "", "ESP & Visuals" })
+    local Misc        = GrpSettings:CreateTab({ "Misc",    "", "Misc & Utils" })
+    local SettingsTab = GrpSettings:CreateTab({ "Setting", "", "Pengaturan" })
     local PrivateServerTab = GrpSettings:CreateTab({ "VIP Server", "", "Private Server List" })
+
+    pcall(function()
+        if Exclusive and Exclusive.Unlock then Exclusive:Unlock() end
+        if AutosTab and AutosTab.Unlock then AutosTab:Unlock() end
+        if EspTab and EspTab.Unlock then EspTab:Unlock() end
+        if Misc and Misc.Unlock then Misc:Unlock() end
+        if SettingsTab and SettingsTab.Unlock then SettingsTab:Unlock() end
+    end)
+
     local Infr = Info:AddSection('Info Event', true, "Left")
     Infr:AddParagraph({
         Title = "ShieldTeam NewFish5",
