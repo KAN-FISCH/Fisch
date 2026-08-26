@@ -1606,39 +1606,30 @@ local function setupGUI()
         pcall(function()
             local player = Players.LocalPlayer
             if not player then return end
-            print("[Tracker Debug] Searching for PlayerStats for:", player.Name)
             local ps = workspace:FindFirstChild("PlayerStats") or game:GetService("ReplicatedStorage"):FindFirstChild("PlayerStats")
             if ps then
-                print("[Tracker Debug] Found PlayerStats container:", ps:GetFullName())
                 local pf = ps:FindFirstChild(player.Name)
                 if pf then
-                    print("[Tracker Debug] Found player folder:", pf:GetFullName())
                     for _, desc in ipairs(pf:GetDescendants()) do
                         if desc.Name == "tracker_fishcaught" or desc.Name == "tracker_streak" or desc.Name == "tracker_reelsbroken" then
-                            print("[Tracker Debug] Found stat item:", desc.Name, "in folder:", desc.Parent:GetFullName())
                             cachedStatsFolder = desc.Parent
                             return
                         end
                     end
-                else
-                    print("[Tracker Debug] Player folder NOT found in PlayerStats for:", player.Name)
                 end
                 for _, desc in ipairs(ps:GetDescendants()) do
                     if desc.Name == "tracker_fishcaught" or desc.Name == "tracker_streak" then
-                        print("[Tracker Debug] Found stat item via fallback:", desc.Name, "in folder:", desc.Parent:GetFullName())
                         cachedStatsFolder = desc.Parent
                         return
                     end
                 end
-            else
-                print("[Tracker Debug] PlayerStats container NOT found in workspace or ReplicatedStorage!")
             end
         end)
         return cachedStatsFolder
     end
-    local lastPrintTick = 0
+    local lastFormattedContent = ""
     task.spawn(function()
-        while task.wait(1) do
+        while task.wait(3) do
             pcall(function()
                 local stats = getStatsFolder()
                 local function readVal(itemNames, localFallback)
@@ -1657,33 +1648,21 @@ local function setupGUI()
                 local reelsBroken = readVal({"tracker_reelsbroken", "reelsbroken", "ReelsBroken"}, _G.LocalReelsBroken)
                 local streak = readVal({"tracker_streak", "streak", "Streak", "FishStreak"}, _G.LocalCurrentStreak)
                 local perfPct = (caught > 0) and ((perf / caught) * 100) or 0
-                if tick() - lastPrintTick >= 3 then
-                    lastPrintTick = tick()
-                    print(string.format("[Tracker Debug] Stats -> StatsFolder: %s | Caught: %s | Perf: %s | ReelsBroken: %s | Streak: %s",
-                        stats and stats:GetFullName() or "N/A", tostring(caught), tostring(perf), tostring(reelsBroken), tostring(streak)))
-                end
                 local formattedContent = string.format(
                     "- Caught: %s (%.2f%% perf)\n- Reels: %s broken\n- Streak: %s",
                     tostring(caught), perfPct, tostring(reelsBroken), tostring(streak)
                 )
-                if streakStatsParagraph then
-                    local ok = pcall(function()
-                        streakStatsParagraph:Set({ Title = "Player Tracker Stats", Content = formattedContent })
-                    end)
-                    if not ok then
-                        pcall(function() streakStatsParagraph:Set(formattedContent) end)
-                        pcall(function() streakStatsParagraph:SetText(formattedContent) end)
-                        pcall(function() streakStatsParagraph:SetContent(formattedContent) end)
-                        pcall(function()
-                            local pObj = (typeof(streakStatsParagraph) == "table" and streakStatsParagraph.Instance) or streakStatsParagraph
-                            if typeof(pObj) == "Instance" then
-                                for _, desc in ipairs(pObj:GetDescendants()) do
-                                    if desc:IsA("TextLabel") and desc.Name ~= "Title" then
-                                        desc.Text = formattedContent
-                                    end
-                                end
-                            end
+                if formattedContent ~= lastFormattedContent then
+                    lastFormattedContent = formattedContent
+                    if streakStatsParagraph then
+                        local ok = pcall(function()
+                            streakStatsParagraph:Set({ Title = "Player Tracker Stats", Content = formattedContent })
                         end)
+                        if not ok then
+                            pcall(function() streakStatsParagraph:Set(formattedContent) end)
+                            pcall(function() streakStatsParagraph:SetText(formattedContent) end)
+                            pcall(function() streakStatsParagraph:SetContent(formattedContent) end)
+                        end
                     end
                 end
             end)
