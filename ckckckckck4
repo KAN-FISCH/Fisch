@@ -1023,7 +1023,7 @@ end
 
 function Speed_Library:CreateWindow(Config)
     Config = Config or {}
-    local Title = Config[1] or Config.Title or "Quantum Onyx Project"
+    local Title = Config[1] or Config.Title or "Shield Onyx Project"
     local detectedGame = "Fisch"
     pcall(function()
         local placeId = game.PlaceId
@@ -1035,7 +1035,7 @@ function Speed_Library:CreateWindow(Config)
             detectedGame = game.Name
         end
     end)
-    local Description = Config[2] or Config.Description or Config.SubTitle or (detectedGame .. " • ROG Edition • " .. os.date("%A"))
+    local Description = Config[2] or Config.Description or Config.SubTitle or (detectedGame .. " • Shield Edition • " .. os.date("%A"))
     local SizeUi = Config[4] or Config.SizeUi or UDim2.fromOffset(660, 420)
     local LoadMode = Config[5] or Config.LoadMode or "fast"
 
@@ -1629,7 +1629,7 @@ function Speed_Library:CreateWindow(Config)
     -- Setup Settings Body Content
     Custom:Create("TextLabel", {
         Font = Enum.Font.Gotham,
-        Text = "Toggle Keybind: RightControl\nHub Theme: Quantum Onyx Edition\nRendering: Optimized Luau\nPlatform: " .. (UserInputService.TouchEnabled and "Mobile" or "PC"),
+        Text = "Toggle Keybind: RightControl\nHub Theme: Shield Edition\nRendering: Optimized Luau\nPlatform: " .. (UserInputService.TouchEnabled and "Mobile" or "PC"),
         TextColor3 = Color3.fromRGB(180, 190, 210),
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -1664,7 +1664,7 @@ function Speed_Library:CreateWindow(Config)
     -- Setup Credits Body Content
     Custom:Create("TextLabel", {
         Font = Enum.Font.Gotham,
-        Text = "Project: Quantum Onyx Edition\nDeveloper: ShielDTeam\nVersion: Freemium 2026\nSpecial thanks to all ShielD users!",
+        Text = "Project: Shield Edition\nDeveloper: ShielDTeam\nVersion: Freemium 2026\nSpecial thanks to all ShielD users!",
         TextColor3 = Color3.fromRGB(190, 200, 220),
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -1679,11 +1679,14 @@ function Speed_Library:CreateWindow(Config)
         CreditsPopup.Visible = false
         SettingsPopup.Visible = false
         ModalOverlay.Visible = false
-        if Tabs and Tabs.OpenROGLauncher then
+        if Tabs and Tabs.OpenShieldLauncher then
+            Tabs:OpenShieldLauncher()
+        elseif Tabs and Tabs.OpenROGLauncher then
             Tabs:OpenROGLauncher()
-        elseif Speed_Library and Speed_Library.CreateROGLauncher then
-            Speed_Library:CreateROGLauncher({
-                Title = "ROG Armoury Crate",
+        elseif Speed_Library and (Speed_Library.CreateShieldLauncher or Speed_Library.CreateROGLauncher) then
+            local launcherFn = Speed_Library.CreateShieldLauncher or Speed_Library.CreateROGLauncher
+            launcherFn(Speed_Library, {
+                Title = "Shield Armoury Crate",
                 AutoDetect = true,
                 OnLaunch = function()
                     if Tabs and Tabs.SetVisible then Tabs:SetVisible(true) end
@@ -3315,16 +3318,17 @@ function Speed_Library:CreateWindow(Config)
         end
         return Speed_Library:CreateROGLauncher(rogConfig)
     end
+    Tabs.OpenShieldLauncher = Tabs.OpenROGLauncher
 
     return Tabs
 end
 
 -- ===============================================================
--- ASUS ROG ARMOURY CRATE - GAME SELECTOR / LAUNCHER SYSTEM
+-- SHIELD ARMOURY CRATE - GAME SELECTOR / LAUNCHER SYSTEM
 -- ===============================================================
 function Speed_Library:CreateROGLauncher(Config)
     Config = Config or {}
-    local Title = Config.Title or "ROG Armoury Crate"
+    local Title = Config.Title or "Shield Armoury Crate"
     local OnLaunch = Config.OnLaunch or function() end
     local OnClose = Config.OnClose or function() end
 
@@ -4038,7 +4042,7 @@ function Speed_Library:CreateROGLauncher(Config)
         -- 1. GACHA VICTORY BURST!
         StatusTitle.Text = "PROFILE MATCHED: FISCH"
         StatusTitle.TextColor3 = Color3.fromRGB(255, 45, 75)
-        StatusSub.Text = "LAUNCHING FISCH ROG EDITION IN 5s..."
+        StatusSub.Text = "LAUNCHING FISCH SHIELD EDITION IN 5s..."
         StatusSub.TextColor3 = Color3.fromRGB(0, 220, 255)
 
         -- Markers pulse
@@ -4091,7 +4095,7 @@ function Speed_Library:CreateROGLauncher(Config)
 
         for remaining = 5, 1, -1 do
             if skipWait then break end
-            StatusSub.Text = string.format("LAUNCHING FISCH ROG EDITION IN %ds...", remaining)
+            StatusSub.Text = string.format("LAUNCHING FISCH SHIELD EDITION IN %ds...", remaining)
             SkipHint.Text = string.format("Starting game in %ds • Tap anywhere to skip", remaining)
             local t = 0
             while t < 1 and not skipWait do
@@ -4101,7 +4105,7 @@ function Speed_Library:CreateROGLauncher(Config)
         end
 
         pcall(function() skipConn:Disconnect() end)
-        StatusSub.Text = "LAUNCHING FISCH ROG EDITION..."
+        StatusSub.Text = "LAUNCHING FISCH SHIELD EDITION..."
         SkipHint.Text = ""
 
         -- 2. GACHA SCREEN FADE OUT ("screen nya memudar kek lagi gacha versi chart rog")
@@ -4167,5 +4171,7 @@ function Speed_Library:CreateROGLauncher(Config)
     }
     return LauncherObj
 end
+
+Speed_Library.CreateShieldLauncher = Speed_Library.CreateROGLauncher
 
 return Speed_Library
