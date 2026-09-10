@@ -527,7 +527,7 @@ end
 -- ===============================================================
 local function CreateOpenCloseButton()
     local ScreenGui = Custom:Create("ScreenGui", {
-        Name = "QuantumOnyx_Toggle",
+        Name = "Shield_Toggle",
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false
     }, RunService:IsStudio() and Player.PlayerGui or (gethui and gethui() or game:GetService("CoreGui")))
@@ -540,7 +540,7 @@ local function CreateOpenCloseButton()
         Position = UDim2.new(0.5, 0, 0, 12),
         Size = UDim2.fromOffset(430, 48),
         ZIndex = 50,
-        Name = "ROG_DockHolder"
+        Name = "Shield_DockHolder"
     }, ScreenGui)
 
     -- Bottom Cyberpunk Grip Handle (for dragging smoothly anywhere on screen)
@@ -937,7 +937,7 @@ function Speed_Library:SetNotification(Config)
     if not GlobalNotificationGui or not GlobalNotificationGui.Parent then
         GlobalNotificationGui = Custom:Create("ScreenGui", {
             ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-            Name = "QuantumNotificationGui"
+            Name = "ShieldNotificationGui"
         }, RunService:IsStudio() and Player.PlayerGui or (gethui and gethui() or game:GetService("CoreGui")))
         ProtectGui(GlobalNotificationGui)
 
@@ -1044,7 +1044,7 @@ function Speed_Library:CreateWindow(Config)
 
     local GuiParent = RunService:IsStudio() and Player.PlayerGui or (gethui and gethui() or game:GetService("CoreGui"))
     local MainGui = Custom:Create("ScreenGui", {
-        Name = "QuantumOnyx_UI",
+        Name = "Shield_UI",
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false
     }, GuiParent)
@@ -1115,16 +1115,16 @@ function Speed_Library:CreateWindow(Config)
 
     MakeDraggable(Topbar, DropShadowHolder)
 
-    -- ROG Eye Logo Left
+    -- Shield Logo Left
     local ROGHeaderLogo = Custom:Create("ImageLabel", {
         Image = "rbxassetid://10709768641",
         ImageColor3 = Color3.fromRGB(255, 45, 75),
         BackgroundTransparency = 1,
-        AnchorPoint = Vector2.new(0, 0.5),
+        AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0, 14, 0.5, 0),
         Size = UDim2.fromOffset(20, 20),
         ZIndex = 5,
-        Name = "ROGHeaderLogo"
+        Name = "ShieldHeaderLogo"
     }, Topbar)
 
     -- Title Left
@@ -3388,7 +3388,7 @@ function Speed_Library:CreateROGLauncher(Config)
 
     local GuiParent = RunService:IsStudio() and Player.PlayerGui or (gethui and gethui() or game:GetService("CoreGui"))
     local ROGGui = Custom:Create("ScreenGui", {
-        Name = "ROG_ArmouryCrate_Launcher",
+        Name = "Shield_ArmouryCrate_Launcher",
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false
     }, GuiParent)
