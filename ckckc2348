@@ -43,7 +43,7 @@ local Custom = {} do
         return _instance
     end
 
-    -- Precision ASUS ROG Chamfered Card Builder (45-degree Beveled Cut Corners with Accent Corner Lines)
+    -- Precision ASUS ROG Chamfered Card Builder (45-degree Beveled Cut Corners)
     function Custom:CreateChamferCard(cfg)
         local parent = cfg.Parent
         local size = cfg.Size or UDim2.new(1, 0, 0, 36)
@@ -51,7 +51,7 @@ local Custom = {} do
         local anchor = cfg.AnchorPoint or Vector2.new(0, 0)
         local layoutOrder = cfg.LayoutOrder or 0
         local name = cfg.Name or "ChamferCard"
-        local C = cfg.Chamfer or cfg.CornerRadius or 6
+        local C = cfg.Chamfer or 6
         local strokeColor = cfg.StrokeColor or Custom.StrokeColor
         local fillColor = cfg.FillColor or Custom.CardDark
         local strokeThickness = cfg.StrokeThickness or 1
@@ -76,36 +76,132 @@ local Custom = {} do
         }, parent)
 
         local fillFrames = {}
+        local cornerSize = math.round(C * 1.41421356)
 
-        -- Smooth Fill Base with Corner Radius (Pure axis-aligned, zero rotated solid squares for 100% clean scroll clipping)
-        local FillBase = Custom:Create("Frame", {
+        -- 1. Center Horizontal Fill: spans full width from y=C to y=H-C
+        local CenterH = Custom:Create("Frame", {
             BackgroundColor3 = fillColor,
-            BackgroundTransparency = cfg.FillTransparency or 0,
             BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, C),
+            Size = UDim2.new(1, 0, 1, -2 * C),
             ZIndex = zIndex,
-            Name = "FillBase"
+            Name = "CenterH"
         }, root)
-        table.insert(fillFrames, FillBase)
+        table.insert(fillFrames, CenterH)
 
-        local FillCorner = Custom:Create("UICorner", {
-            CornerRadius = UDim.new(0, C),
-            Name = "FillCorner"
-        }, FillBase)
+        -- 2. Center Vertical Fill: spans width from x=C to x=W-C, height full
+        local CenterV = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BorderSizePixel = 0,
+            Position = UDim2.new(0, C, 0, 0),
+            Size = UDim2.new(1, -2 * C, 1, 0),
+            ZIndex = zIndex,
+            Name = "CenterV"
+        }, root)
+        table.insert(fillFrames, CenterV)
 
-        -- 4 Perimeter Edge Lines + 4 Cyber Corner Diagonal Cut Lines ("garis di sudut-sudut")
+        -- 3. Four Corner Triangles (Strictly clipped containers with rotated 45-degree squares)
+        -- Top-Left Corner
+        local TL_Box = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor or Custom.CardDark,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Position = UDim2.new(0, 0, 0, 0),
+            Size = UDim2.new(0, C, 0, C),
+            ClipsDescendants = true,
+            ZIndex = zIndex,
+            Name = "TL_Box"
+        }, root)
+        local TL_Fill = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(1, 0, 1, 0),
+            Size = UDim2.new(0, cornerSize, 0, cornerSize),
+            Rotation = 45,
+            ZIndex = zIndex,
+            Name = "TL_Fill"
+        }, TL_Box)
+        table.insert(fillFrames, TL_Fill)
+
+        -- Top-Right Corner
+        local TR_Box = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor or Custom.CardDark,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Position = UDim2.new(1, -C, 0, 0),
+            Size = UDim2.new(0, C, 0, C),
+            ClipsDescendants = true,
+            ZIndex = zIndex,
+            Name = "TR_Box"
+        }, root)
+        local TR_Fill = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0, 0, 1, 0),
+            Size = UDim2.new(0, cornerSize, 0, cornerSize),
+            Rotation = 45,
+            ZIndex = zIndex,
+            Name = "TR_Fill"
+        }, TR_Box)
+        table.insert(fillFrames, TR_Fill)
+
+        -- Bottom-Left Corner
+        local BL_Box = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor or Custom.CardDark,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Position = UDim2.new(0, 0, 1, -C),
+            Size = UDim2.new(0, C, 0, C),
+            ClipsDescendants = true,
+            ZIndex = zIndex,
+            Name = "BL_Box"
+        }, root)
+        local BL_Fill = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(1, 0, 0, 0),
+            Size = UDim2.new(0, cornerSize, 0, cornerSize),
+            Rotation = 45,
+            ZIndex = zIndex,
+            Name = "BL_Fill"
+        }, BL_Box)
+        table.insert(fillFrames, BL_Fill)
+
+        -- Bottom-Right Corner
+        local BR_Box = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor or Custom.CardDark,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Position = UDim2.new(1, -C, 1, -C),
+            Size = UDim2.new(0, C, 0, C),
+            ClipsDescendants = true,
+            ZIndex = zIndex,
+            Name = "BR_Box"
+        }, root)
+        local BR_Fill = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0, 0, 0, 0),
+            Size = UDim2.new(0, cornerSize, 0, cornerSize),
+            Rotation = 45,
+            ZIndex = zIndex,
+            Name = "BR_Fill"
+        }, BR_Box)
+        table.insert(fillFrames, BR_Fill)
+
+        -- 4. Perimeter Stroke Segments (8 segments: 4 straight edges + 4 diagonal corner cuts in ROG Red)
         local strokeLines = {}
         local cornerLines = {}
-        local CornerLinesHolder = nil
-
         if strokeThickness and strokeThickness > 0 and strokeColor then
             local strokeZ = zIndex + 1
             local cornerZ = strokeZ + 1
 
-            -- 4 Straight Perimeter Borders
             local TopLine = Custom:Create("Frame", {
                 BackgroundColor3 = strokeColor,
-                BackgroundTransparency = cfg.StrokeTransparency or 0,
                 BorderSizePixel = 0,
                 Position = UDim2.new(0, C, 0, 0),
                 Size = UDim2.new(1, -2 * C, 0, strokeThickness),
@@ -116,7 +212,6 @@ local Custom = {} do
 
             local BottomLine = Custom:Create("Frame", {
                 BackgroundColor3 = strokeColor,
-                BackgroundTransparency = cfg.StrokeTransparency or 0,
                 BorderSizePixel = 0,
                 Position = UDim2.new(0, C, 1, -strokeThickness),
                 Size = UDim2.new(1, -2 * C, 0, strokeThickness),
@@ -127,7 +222,6 @@ local Custom = {} do
 
             local LeftLine = Custom:Create("Frame", {
                 BackgroundColor3 = strokeColor,
-                BackgroundTransparency = cfg.StrokeTransparency or 0,
                 BorderSizePixel = 0,
                 Position = UDim2.new(0, 0, 0, C),
                 Size = UDim2.new(0, strokeThickness, 1, -2 * C),
@@ -138,7 +232,6 @@ local Custom = {} do
 
             local RightLine = Custom:Create("Frame", {
                 BackgroundColor3 = strokeColor,
-                BackgroundTransparency = cfg.StrokeTransparency or 0,
                 BorderSizePixel = 0,
                 Position = UDim2.new(1, -strokeThickness, 0, C),
                 Size = UDim2.new(0, strokeThickness, 1, -2 * C),
@@ -149,16 +242,7 @@ local Custom = {} do
 
             local diagLen = math.floor(C * 1.41421356)
 
-            -- Dedicated container for the 4 corner diagonal cut lines (enables instant scroll-culling)
-            CornerLinesHolder = Custom:Create("Frame", {
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-                Size = UDim2.new(1, 0, 1, 0),
-                ZIndex = cornerZ,
-                Name = "CornerLinesHolder"
-            }, root)
-
-            -- 4 High-Contrast Cyber Corner Diagonal Cut Lines ("garis di sudut-sudut")
+            -- 4 High-Contrast ROG Corner Diagonal Cut Lines (Red by default so corners pop!)
             local TL_Diag = Custom:Create("Frame", {
                 BackgroundColor3 = cornerColor,
                 BackgroundTransparency = cornerTransparency,
@@ -169,7 +253,7 @@ local Custom = {} do
                 Rotation = -45,
                 ZIndex = cornerZ,
                 Name = "TL_Diag"
-            }, CornerLinesHolder)
+            }, root)
             table.insert(cornerLines, TL_Diag)
 
             local TR_Diag = Custom:Create("Frame", {
@@ -182,7 +266,7 @@ local Custom = {} do
                 Rotation = 45,
                 ZIndex = cornerZ,
                 Name = "TR_Diag"
-            }, CornerLinesHolder)
+            }, root)
             table.insert(cornerLines, TR_Diag)
 
             local BL_Diag = Custom:Create("Frame", {
@@ -195,7 +279,7 @@ local Custom = {} do
                 Rotation = 45,
                 ZIndex = cornerZ,
                 Name = "BL_Diag"
-            }, CornerLinesHolder)
+            }, root)
             table.insert(cornerLines, BL_Diag)
 
             local BR_Diag = Custom:Create("Frame", {
@@ -208,18 +292,23 @@ local Custom = {} do
                 Rotation = -45,
                 ZIndex = cornerZ,
                 Name = "BR_Diag"
-            }, CornerLinesHolder)
+            }, root)
             table.insert(cornerLines, BR_Diag)
         end
 
         local cardData = {
             Root = root,
-            FillBase = FillBase,
-            Corner = FillCorner,
-            CornerLinesHolder = CornerLinesHolder,
+            CenterH = CenterH,
+            CenterV = CenterV,
+            TL_Fill = TL_Fill,
+            TR_Fill = TR_Fill,
+            BL_Fill = BL_Fill,
+            BR_Fill = BR_Fill,
+            FillBase = CenterH,
             FillFrames = fillFrames,
             StrokeLines = strokeLines,
             CornerLines = cornerLines,
+            CornerLinesHolder = root,
             SetFillColor = function(col, dur)
                 for _, f in ipairs(fillFrames) do
                     if dur and dur > 0 then
@@ -278,10 +367,100 @@ local Custom = {} do
         return root, cardData
     end
 
-    -- Precision ASUS ROG Component Card (Chamfered Beveled Cut Corners with Corner Accent Lines)
+    -- Precision High-Performance Component Card (Zero Rotated Elements for 100% Guaranteed Scroll Clipping)
     function Custom:CreateComponentCard(cfg)
-        cfg.Chamfer = cfg.Chamfer or cfg.CornerRadius or 6
-        return Custom:CreateChamferCard(cfg)
+        local parent = cfg.Parent
+        local size = cfg.Size or UDim2.new(1, 0, 0, 36)
+        local pos = cfg.Position or UDim2.new(0, 0, 0, 0)
+        local anchor = cfg.AnchorPoint or Vector2.new(0, 0)
+        local layoutOrder = cfg.LayoutOrder or 0
+        local name = cfg.Name or "ComponentCard"
+        local cornerRadius = cfg.CornerRadius or cfg.Chamfer or 6
+        local strokeColor = cfg.StrokeColor or Custom.StrokeColor
+        local fillColor = cfg.FillColor or Custom.CardDark
+        local strokeThickness = cfg.StrokeThickness or 1
+        local zIndex = cfg.ZIndex or 2
+        local clips = (cfg.ClipsDescendants ~= nil) and cfg.ClipsDescendants or false
+
+        -- Root card container (no rotated children - guarantees clean clipping inside ScrollingFrames)
+        local root = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BackgroundTransparency = cfg.FillTransparency or 0,
+            BorderSizePixel = 0,
+            Size = size,
+            Position = pos,
+            AnchorPoint = anchor,
+            LayoutOrder = layoutOrder,
+            ClipsDescendants = clips,
+            Name = name,
+            ZIndex = zIndex
+        }, parent)
+
+        local corner = Custom:Create("UICorner", {
+            CornerRadius = UDim.new(0, cornerRadius),
+            Name = "CardCorner"
+        }, root)
+
+        local stroke = nil
+        if strokeThickness and strokeThickness > 0 and strokeColor then
+            stroke = Custom:Create("UIStroke", {
+                Color = strokeColor,
+                Thickness = strokeThickness,
+                Transparency = cfg.StrokeTransparency or 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                Name = "CardStroke"
+            }, root)
+        end
+
+        local cardData = {
+            Root = root,
+            Corner = corner,
+            Stroke = stroke,
+            SetFillColor = function(col, dur)
+                if dur and dur > 0 then
+                    TweenService:Create(root, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = col}):Play()
+                else
+                    root.BackgroundColor3 = col
+                end
+            end,
+            SetStrokeColor = function(col, dur)
+                if stroke then
+                    if dur and dur > 0 then
+                        TweenService:Create(stroke, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Color = col}):Play()
+                    else
+                        stroke.Color = col
+                    end
+                end
+            end,
+            SetCornerColor = function(col, dur)
+                if stroke then
+                    if dur and dur > 0 then
+                        TweenService:Create(stroke, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Color = col}):Play()
+                    else
+                        stroke.Color = col
+                    end
+                end
+            end,
+            SetFillTransparency = function(trans, dur)
+                if dur and dur > 0 then
+                    TweenService:Create(root, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = trans}):Play()
+                else
+                    root.BackgroundTransparency = trans
+                end
+            end,
+            SetStrokeTransparency = function(trans, dur)
+                if stroke then
+                    if dur and dur > 0 then
+                        TweenService:Create(stroke, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = trans}):Play()
+                    else
+                        stroke.Transparency = trans
+                    end
+                end
+            end
+        }
+
+        root:SetAttribute("ComponentCard", true)
+        return root, cardData
     end
 end
 
@@ -403,7 +582,7 @@ local function CreateOpenCloseButton()
             Name = "ChamferBox"
         })
 
-        if topColor and bottomColor then
+        if topColor and bottomColor and cardData.TL_Fill then
             cardData.TL_Fill.BackgroundColor3 = topColor
             cardData.TR_Fill.BackgroundColor3 = topColor
             cardData.BL_Fill.BackgroundColor3 = bottomColor
