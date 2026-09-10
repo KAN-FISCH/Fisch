@@ -1071,7 +1071,6 @@ function Speed_Library:CreateWindow(Config)
         return btn, btnFrame
     end
 
-    local ROGBtn, ROGFrame = CreatePillButton("Games", "rbxassetid://10709768641", 0, true)
     local SettingsBtn, SettingsFrame = CreatePillButton("Settings", "rbxassetid://7072721867", 1, false)
     local CreditsBtn, CreditsFrame = CreatePillButton("Credits", "rbxassetid://10747373176", 2, false)
 
