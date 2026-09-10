@@ -30,6 +30,7 @@ local Custom = {} do
     Custom.StrokeCyan = Color3.fromRGB(0, 195, 255)    -- Cyber Cyan Border (for Dropdowns)
     Custom.StrokeRed = Color3.fromRGB(255, 45, 75)       -- Active ROG Red Border
     Custom.Cyan = Color3.fromRGB(0, 195, 255)            -- ROG Cyber Cyan Accent
+    Custom.BorderColor = Color3.fromRGB(34, 44, 62)      -- Border color alias
 
     function Custom:Create(Name, Properties, Parent)
         local _instance = Instance.new(Name)
@@ -361,6 +362,102 @@ local Custom = {} do
         }
 
         root:SetAttribute("ChamferCard", true)
+        return root, cardData
+    end
+
+    -- Precision High-Performance Component Card (Zero Rotated Elements for 100% Guaranteed Scroll Clipping)
+    function Custom:CreateComponentCard(cfg)
+        local parent = cfg.Parent
+        local size = cfg.Size or UDim2.new(1, 0, 0, 36)
+        local pos = cfg.Position or UDim2.new(0, 0, 0, 0)
+        local anchor = cfg.AnchorPoint or Vector2.new(0, 0)
+        local layoutOrder = cfg.LayoutOrder or 0
+        local name = cfg.Name or "ComponentCard"
+        local cornerRadius = cfg.CornerRadius or cfg.Chamfer or 6
+        local strokeColor = cfg.StrokeColor or Custom.StrokeColor
+        local fillColor = cfg.FillColor or Custom.CardDark
+        local strokeThickness = cfg.StrokeThickness or 1
+        local zIndex = cfg.ZIndex or 2
+        local clips = (cfg.ClipsDescendants ~= nil) and cfg.ClipsDescendants or false
+
+        -- Root card container (no rotated children - guarantees clean clipping inside ScrollingFrames)
+        local root = Custom:Create("Frame", {
+            BackgroundColor3 = fillColor,
+            BackgroundTransparency = cfg.FillTransparency or 0,
+            BorderSizePixel = 0,
+            Size = size,
+            Position = pos,
+            AnchorPoint = anchor,
+            LayoutOrder = layoutOrder,
+            ClipsDescendants = clips,
+            Name = name,
+            ZIndex = zIndex
+        }, parent)
+
+        local corner = Custom:Create("UICorner", {
+            CornerRadius = UDim.new(0, cornerRadius),
+            Name = "CardCorner"
+        }, root)
+
+        local stroke = nil
+        if strokeThickness and strokeThickness > 0 and strokeColor then
+            stroke = Custom:Create("UIStroke", {
+                Color = strokeColor,
+                Thickness = strokeThickness,
+                Transparency = cfg.StrokeTransparency or 0,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                Name = "CardStroke"
+            }, root)
+        end
+
+        local cardData = {
+            Root = root,
+            Corner = corner,
+            Stroke = stroke,
+            SetFillColor = function(col, dur)
+                if dur and dur > 0 then
+                    TweenService:Create(root, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = col}):Play()
+                else
+                    root.BackgroundColor3 = col
+                end
+            end,
+            SetStrokeColor = function(col, dur)
+                if stroke then
+                    if dur and dur > 0 then
+                        TweenService:Create(stroke, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Color = col}):Play()
+                    else
+                        stroke.Color = col
+                    end
+                end
+            end,
+            SetCornerColor = function(col, dur)
+                if stroke then
+                    if dur and dur > 0 then
+                        TweenService:Create(stroke, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Color = col}):Play()
+                    else
+                        stroke.Color = col
+                    end
+                end
+            end,
+            SetFillTransparency = function(trans, dur)
+                if dur and dur > 0 then
+                    TweenService:Create(root, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = trans}):Play()
+                else
+                    root.BackgroundTransparency = trans
+                end
+            end,
+            SetStrokeTransparency = function(trans, dur)
+                if stroke then
+                    if dur and dur > 0 then
+                        TweenService:Create(stroke, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = trans}):Play()
+                    else
+                        stroke.Transparency = trans
+                    end
+                end
+            end
+        }
+
+        root:SetAttribute("ComponentCard", true)
         return root, cardData
     end
 end
@@ -927,7 +1024,18 @@ end
 function Speed_Library:CreateWindow(Config)
     Config = Config or {}
     local Title = Config[1] or Config.Title or "Quantum Onyx Project"
-    local Description = Config[2] or Config.Description or Config.SubTitle or ("Blox Fruit • v.Freemium • " .. os.date("%A"))
+    local detectedGame = "Fisch"
+    pcall(function()
+        local placeId = game.PlaceId
+        if placeId == 16732694052 or placeId == 18565514941 or (game.Name and string.find(string.lower(game.Name), "fisch")) then
+            detectedGame = "Fisch"
+        elseif placeId == 2753915549 or placeId == 4442272183 or placeId == 7449423635 or (game.Name and string.find(string.lower(game.Name), "blox")) then
+            detectedGame = "Blox Fruit"
+        elseif game.Name and game.Name ~= "" then
+            detectedGame = game.Name
+        end
+    end)
+    local Description = Config[2] or Config.Description or Config.SubTitle or (detectedGame .. " • ROG Edition • " .. os.date("%A"))
     local SizeUi = Config[4] or Config.SizeUi or UDim2.fromOffset(660, 420)
     local LoadMode = Config[5] or Config.LoadMode or "fast"
 
@@ -1321,6 +1429,7 @@ function Speed_Library:CreateWindow(Config)
         BorderSizePixel = 0,
         Position = UDim2.new(0, 16, 0, 44),
         Size = UDim2.new(1, -32, 0, 36),
+        ClipsDescendants = true,
         ZIndex = 3,
         Name = "NavRow"
     }, Main)
@@ -1373,10 +1482,22 @@ function Speed_Library:CreateWindow(Config)
         AutomaticCanvasSize = Enum.AutomaticSize.X,
         ScrollBarThickness = 0,
         ScrollingDirection = Enum.ScrollingDirection.X,
-        ClipsDescendants = false,
+        ClipsDescendants = true,
         ZIndex = 4,
         Name = "TabsContainer"
     }, NavRow)
+
+    TabsContainer.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            local scrollDelta = input.Position.Z
+            local currentX = TabsContainer.CanvasPosition.X
+            local maxX = math.max(0, TabsContainer.AbsoluteCanvasSize.X - TabsContainer.AbsoluteWindowSize.X)
+            local newX = math.clamp(currentX - (scrollDelta * 60), 0, maxX)
+            TweenService:Create(TabsContainer, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                CanvasPosition = Vector2.new(newX, 0)
+            }):Play()
+        end
+    end)
 
     local TabsLayout = Custom:Create("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal,
@@ -1394,23 +1515,23 @@ function Speed_Library:CreateWindow(Config)
         BackgroundColor3 = Color3.fromRGB(255, 45, 75),
         BackgroundTransparency = 0.55,
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 150, 1, -4),
+        Position = UDim2.new(0, 0, 1, -4),
         Size = UDim2.new(0, 0, 0, 6),
         ZIndex = 5,
         Visible = false,
         Name = "TabIndicatorGlow"
-    }, NavRow)
+    }, TabsContainer)
     Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, TabIndicatorGlow)
 
     local TabIndicator = Custom:Create("Frame", {
         BackgroundColor3 = Color3.fromRGB(255, 45, 75),
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 150, 1, -2),
+        Position = UDim2.new(0, 0, 1, -2),
         Size = UDim2.new(0, 0, 0, 2.5),
         ZIndex = 6,
         Visible = false,
         Name = "TabIndicator"
-    }, NavRow)
+    }, TabsContainer)
     Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, TabIndicator)
 
     -- ─────────────────────────────────────────────────────────────
@@ -1421,6 +1542,7 @@ function Speed_Library:CreateWindow(Config)
         BorderSizePixel = 0,
         Position = UDim2.new(0, 16, 0, 84),
         Size = UDim2.new(1, -32, 1, -94),
+        ClipsDescendants = true,
         ZIndex = 3,
         Name = "ContentArea"
     }, Main)
@@ -1708,6 +1830,7 @@ function Speed_Library:CreateWindow(Config)
             BorderSizePixel = 0,
             Position = UDim2.new(0, 0, 0, 0),
             Size = UDim2.new(1, 0, 1, 0),
+            ClipsDescendants = true,
             Visible = false,
             Name = "TabView_" .. TabName
         }, ContentArea)
@@ -1721,6 +1844,7 @@ function Speed_Library:CreateWindow(Config)
             ScrollBarThickness = 2,
             ScrollBarImageColor3 = Custom.AccentBright,
             ScrollBarImageTransparency = 0.6,
+            ClipsDescendants = true,
             Name = "LeftColumn"
         }, TabView)
 
@@ -1742,6 +1866,7 @@ function Speed_Library:CreateWindow(Config)
             ScrollBarThickness = 2,
             ScrollBarImageColor3 = Custom.AccentBright,
             ScrollBarImageTransparency = 0.6,
+            ClipsDescendants = true,
             Name = "RightColumn"
         }, TabView)
 
@@ -1786,23 +1911,18 @@ function Speed_Library:CreateWindow(Config)
             task.spawn(function()
                 task.wait(0.04)
                 pcall(function()
-                    local btnPosInNav = TabBtn.AbsolutePosition.X - NavRow.AbsolutePosition.X
+                    local btnPosInTabs = TabBtn.AbsolutePosition.X - TabsContainer.AbsolutePosition.X + TabsContainer.CanvasPosition.X
                     local targetWidth = TabBtn.AbsoluteSize.X
                     if targetWidth <= 0 then
                         targetWidth = btnWidth
                     end
                     TabIndicatorGlow.Visible = true
-                    TabIndicatorGlow.Visible = true
                     TweenService:Create(TabIndicator, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Position = UDim2.new(0, btnPosInNav, 1, -2),
+                        Position = UDim2.new(0, btnPosInTabs, 1, -2),
                         Size = UDim2.new(0, targetWidth, 0, 2.5)
                     }):Play()
                     TweenService:Create(TabIndicatorGlow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Position = UDim2.new(0, btnPosInNav - 4, 1, -4),
-                        Size = UDim2.new(0, targetWidth + 8, 0, 6)
-                    }):Play()
-                    TweenService:Create(TabIndicatorGlow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Position = UDim2.new(0, btnPosInNav - 4, 1, -4),
+                        Position = UDim2.new(0, btnPosInTabs - 4, 1, -4),
                         Size = UDim2.new(0, targetWidth + 8, 0, 6)
                     }):Play()
                 end)
@@ -1947,11 +2067,11 @@ function Speed_Library:CreateWindow(Config)
 
                 Section.ItemCount = Section.ItemCount + 1
 
-                local Card, CardData = Custom:CreateChamferCard({
+                local Card, CardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, 36),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -2066,6 +2186,10 @@ function Speed_Library:CreateWindow(Config)
                     UpdateState(newVal)
                 end
 
+                function TogObj:SetValue(newVal)
+                    self:Set(newVal)
+                end
+
                 function TogObj:OnChanged(fn)
                     self.OnChangedFn = fn
                     return self
@@ -2106,11 +2230,11 @@ function Speed_Library:CreateWindow(Config)
 
                 Section.ItemCount = Section.ItemCount + 1
 
-                local DropCard, DropCardData = Custom:CreateChamferCard({
+                local DropCard, DropCardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, 36),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -2142,13 +2266,13 @@ function Speed_Library:CreateWindow(Config)
                     Parent = TopRow
                 })
 
-                -- Pill Selector Box on Right [ Melee  v ] (Chamfered Corner Badge)
-                local SelectorBox, SelectorData = Custom:CreateChamferCard({
+                -- Pill Selector Box on Right [ Melee  v ] (Component Card Badge)
+                local SelectorBox, SelectorData = Custom:CreateComponentCard({
                     Parent = TopRow,
                     Size = UDim2.new(0, 115, 0, 24),
                     Position = UDim2.new(1, -10, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
-                    Chamfer = 4,
+                    CornerRadius = 4,
                     FillColor = Color3.fromRGB(16, 20, 32),
                     StrokeColor = Color3.fromRGB(0, 195, 255),
                     StrokeThickness = 1,
@@ -2509,6 +2633,10 @@ function Speed_Library:CreateWindow(Config)
                     pcall(Callback, Multi and self.Value or (self.Value[1]))
                 end
 
+                function DropObj:SetValue(v)
+                    self:Set(v)
+                end
+
                 function DropObj:Refresh(newOptions, newSelect)
                     self.Options = newOptions or {}
                     if newSelect then
@@ -2546,11 +2674,11 @@ function Speed_Library:CreateWindow(Config)
 
                 Section.ItemCount = Section.ItemCount + 1
 
-                local SliderCard, SliderCardData = Custom:CreateChamferCard({
+                local SliderCard, SliderCardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, 50),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -2581,13 +2709,13 @@ function Speed_Library:CreateWindow(Config)
                     Parent = TopRow
                 })
 
-                -- Chamfered Corner Value Badge [ 250 ]
-                local ValBadge, ValBadgeData = Custom:CreateChamferCard({
+                -- Corner Value Badge [ 250 ]
+                local ValBadge, ValBadgeData = Custom:CreateComponentCard({
                     Parent = TopRow,
                     Size = UDim2.new(0, 48, 0, 18),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
-                    Chamfer = 3,
+                    CornerRadius = 3,
                     FillColor = Color3.fromRGB(20, 12, 18),
                     StrokeColor = Color3.fromRGB(255, 45, 75),
                     StrokeThickness = 1,
@@ -2704,6 +2832,10 @@ function Speed_Library:CreateWindow(Config)
                     UpdateFromVal(v)
                 end
 
+                function SliderObj:SetValue(v)
+                    self:Set(v)
+                end
+
                 UpdateFromVal(Default)
                 return SliderObj
             end
@@ -2718,11 +2850,11 @@ function Speed_Library:CreateWindow(Config)
 
                 Section.ItemCount = Section.ItemCount + 1
 
-                local BtnCard, BtnCardData = Custom:CreateChamferCard({
+                local BtnCard, BtnCardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, 36),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -2791,11 +2923,11 @@ function Speed_Library:CreateWindow(Config)
                 local totalH = (PTitle ~= "" and (24 + contentH + 18) or (contentH + 20))
                 totalH = math.max(totalH, 40)
 
-                local Card, CardData = Custom:CreateChamferCard({
+                local Card, CardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, totalH),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -2856,6 +2988,18 @@ function Speed_Library:CreateWindow(Config)
                     TweenService:Create(Card, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Size = UDim2.new(1, 0, 0, newTotalH)}):Play()
                 end
 
+                function ParaObj:SetTitle(title)
+                    self:Set({Title = title, Content = PContent})
+                end
+
+                function ParaObj:SetContent(content)
+                    self:Set({Title = PTitle, Content = content})
+                end
+
+                function ParaObj:SetText(content)
+                    self:Set({Title = PTitle, Content = content})
+                end
+
                 return ParaObj
             end
 
@@ -2887,6 +3031,7 @@ function Speed_Library:CreateWindow(Config)
 
                 return { Set = function(_, cfg) end }
             end
+            Section.AddSeparator = Section.AddSeperator
 
             function Section:AddLine()
                 Section.ItemCount = Section.ItemCount + 1
@@ -2912,11 +3057,11 @@ function Speed_Library:CreateWindow(Config)
 
                 Section.ItemCount = Section.ItemCount + 1
 
-                local InpCard, InpCardData = Custom:CreateChamferCard({
+                local InpCard, InpCardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, 36),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -2939,12 +3084,12 @@ function Speed_Library:CreateWindow(Config)
                     Parent = InpCard
                 })
 
-                local BoxHolder, BoxHolderData = Custom:CreateChamferCard({
+                local BoxHolder, BoxHolderData = Custom:CreateComponentCard({
                     Parent = InpCard,
                     Size = UDim2.new(0, 120, 0, 24),
                     Position = UDim2.new(1, -10, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
-                    Chamfer = 4,
+                    CornerRadius = 4,
                     FillColor = Color3.fromRGB(16, 20, 32),
                     StrokeColor = Color3.fromRGB(35, 48, 68),
                     StrokeThickness = 1,
@@ -2974,10 +3119,20 @@ function Speed_Library:CreateWindow(Config)
                     pcall(Callback, TextBox.Text)
                 end)
 
-                return {
-                    Set = function(_, val) TextBox.Text = tostring(val) end,
-                    Value = InpDefault
+                local InpObj = {
+                    Value = InpDefault,
+                    Set = function(self, val)
+                        TextBox.Text = tostring(val)
+                        self.Value = val
+                    end,
+                    SetValue = function(self, val)
+                        self:Set(val)
+                    end,
+                    SetText = function(self, val)
+                        self:Set(val)
+                    end
                 }
+                return InpObj
             end
             Section.AddTextBox = Section.AddInput
 
@@ -2992,11 +3147,11 @@ function Speed_Library:CreateWindow(Config)
 
                 Section.ItemCount = Section.ItemCount + 1
 
-                local KeyCard, KeyCardData = Custom:CreateChamferCard({
+                local KeyCard, KeyCardData = Custom:CreateComponentCard({
                     Parent = ItemsContainer,
                     Size = UDim2.new(1, 0, 0, 36),
                     LayoutOrder = Section.ItemCount,
-                    Chamfer = 6,
+                    CornerRadius = 6,
                     FillColor = Custom.CardDark,
                     StrokeColor = Custom.StrokeColor,
                     StrokeThickness = 1,
@@ -3019,12 +3174,12 @@ function Speed_Library:CreateWindow(Config)
                     Parent = KeyCard
                 })
 
-                local BindHolder, BindData = Custom:CreateChamferCard({
+                local BindHolder, BindData = Custom:CreateComponentCard({
                     Parent = KeyCard,
                     Size = UDim2.new(0, 90, 0, 24),
                     Position = UDim2.new(1, -10, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
-                    Chamfer = 4,
+                    CornerRadius = 4,
                     FillColor = Color3.fromRGB(16, 20, 32),
                     StrokeColor = Color3.fromRGB(0, 195, 255),
                     StrokeThickness = 1,
