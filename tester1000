@@ -345,13 +345,13 @@ pcall(function()
     elseif readfile and isfile and isfile("NewFish5_Source/ShielD_UILib.lua") then
         Speed_Library = loadstring(readfile("NewFish5_Source/ShielD_UILib.lua"))()
     elseif game and game.HttpGet then
-        Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ckckc2348"))()
+        Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/cukimaier235"))()
     end
 end)
 if not Speed_Library then
     pcall(function()
         if game and game.HttpGet then
-            Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ckckc2348"))()
+            Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/cukimaier235"))()
         end
     end)
 end
@@ -1456,39 +1456,9 @@ local function setupGUI()
         Visible = false
     })
 
-    -- 1. Launch Shield Armoury Crate Animated Gacha Selector Screen FIRST!
-    local launcherStarted = false
-    local launchMethod = Speed_Library and (Speed_Library.CreateShieldLauncher or Speed_Library.CreateROGLauncher)
-    if launchMethod then
-        launcherStarted = true
-        pcall(function()
-            launchMethod(Speed_Library, {
-                Title = "Shield Armoury Crate",
-                AutoDetect = true,
-                OnLaunch = function(selectedGame)
-                    pcall(function()
-                        Speed_Library:SetNotification({
-                            Title = (selectedGame and selectedGame.Name) or "Fisch",
-                            Content = "Game selected: " .. ((selectedGame and selectedGame.Name) or "Fisch") .. " • Hub Loaded!",
-                            Delay = 3.5
-                        })
-                    end)
-                    if Window and Window.SetVisible then
-                        Window:SetVisible(true)
-                    end
-                end,
-                OnClose = function()
-                    if Window and Window.SetVisible then
-                        Window:SetVisible(true)
-                    end
-                end
-            })
-        end)
-    end
-    if not launcherStarted then
-        if Window and Window.SetVisible then
-            Window:SetVisible(true)
-        end
+    -- Show dashboard directly
+    if Window and Window.SetVisible then
+        Window:SetVisible(true)
     end
     local GrpMain = Window:CreateGroup({"Main", "rbxassetid://7733960981"})
     local GrpMore = Window:CreateGroup({"More", "rbxassetid://7733765398"})
