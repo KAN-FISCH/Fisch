@@ -1301,36 +1301,67 @@ local Custom = {} do
     end
 end
 
--- Helper: Draggable Frame
+-- Helper: High-Performance Draggable Frame (Smooth 60/144+ FPS, zero stutter)
 local function MakeDraggable(dragHandle, targetFrame)
     local dragging = false
     local dragStart = nil
     local startPos = nil
+    local targetPos = nil
+
+    local moveConn = nil
+    local renderConn = nil
+    local endConn = nil
+    local focusConn = nil
+
+    local function stopDragging()
+        dragging = false
+        if moveConn then moveConn:Disconnect() moveConn = nil end
+        if renderConn then renderConn:Disconnect() renderConn = nil end
+        if endConn then endConn:Disconnect() endConn = nil end
+        if focusConn then focusConn:Disconnect() focusConn = nil end
+        if targetPos and targetFrame and targetFrame.Parent then
+            targetFrame.Position = targetPos
+        end
+        dragStart = nil
+        startPos = nil
+        targetPos = nil
+    end
 
     dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            stopDragging()
             dragging = true
             dragStart = input.Position
             startPos = targetFrame.Position
+            targetPos = startPos
 
-            local changedConn, endedConn
-            changedConn = UserInputService.InputChanged:Connect(function(moveInput)
+            moveConn = UserInputService.InputChanged:Connect(function(moveInput)
                 if dragging and (moveInput.UserInputType == Enum.UserInputType.MouseMovement or moveInput.UserInputType == Enum.UserInputType.Touch) then
                     local delta = moveInput.Position - dragStart
-                    targetFrame.Position = UDim2.new(
+                    targetPos = UDim2.new(
                         startPos.X.Scale, startPos.X.Offset + delta.X,
                         startPos.Y.Scale, startPos.Y.Offset + delta.Y
                     )
                 end
             end)
 
-            endedConn = UserInputService.InputEnded:Connect(function(endInput)
-                if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
-                    dragging = false
-                    if changedConn then changedConn:Disconnect() changedConn = nil end
-                    if endedConn then endedConn:Disconnect() endedConn = nil end
+            renderConn = RunService.RenderStepped:Connect(function()
+                if dragging and targetPos and targetFrame and targetFrame.Parent then
+                    if targetFrame.Position ~= targetPos then
+                        targetFrame.Position = targetPos
+                    end
+                else
+                    stopDragging()
                 end
             end)
+
+            endConn = UserInputService.InputEnded:Connect(function(endInput)
+                if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
+                    stopDragging()
+                end
+            end)
+
+            focusConn = UserInputService.WindowFocusReleased:Connect(stopDragging)
         end
     end)
 end
@@ -1445,23 +1476,42 @@ local function CreateOpenCloseButton()
     local function SetupButtonInteraction(btn, rootBox, slit, baseSize, hoverSize, strokeColor, slitColor, onClick)
         local dragStart = nil
         local startPos = nil
+        local targetPos = nil
         local isDragging = false
+        local moveConn = nil
+        local renderConn = nil
+        local endConn = nil
+        local focusConn = nil
+
+        local function cleanupDrag()
+            if moveConn then moveConn:Disconnect() moveConn = nil end
+            if renderConn then renderConn:Disconnect() renderConn = nil end
+            if endConn then endConn:Disconnect() endConn = nil end
+            if focusConn then focusConn:Disconnect() focusConn = nil end
+            if targetPos and DockHolder and DockHolder.Parent then
+                DockHolder.Position = targetPos
+            end
+            dragStart = nil
+            startPos = nil
+            targetPos = nil
+        end
 
         btn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                cleanupDrag()
                 dragStart = input.Position
                 startPos = DockHolder.Position
+                targetPos = startPos
                 isDragging = false
 
-                local changedConn, endedConn
-                changedConn = UserInputService.InputChanged:Connect(function(moveInput)
+                moveConn = UserInputService.InputChanged:Connect(function(moveInput)
                     if (moveInput.UserInputType == Enum.UserInputType.MouseMovement or moveInput.UserInputType == Enum.UserInputType.Touch) and dragStart then
                         local delta = moveInput.Position - dragStart
                         if delta.Magnitude > 6 then
                             isDragging = true
                         end
                         if isDragging then
-                            DockHolder.Position = UDim2.new(
+                            targetPos = UDim2.new(
                                 startPos.X.Scale, startPos.X.Offset + delta.X,
                                 startPos.Y.Scale, startPos.Y.Offset + delta.Y
                             )
@@ -1469,16 +1519,28 @@ local function CreateOpenCloseButton()
                     end
                 end)
 
-                endedConn = UserInputService.InputEnded:Connect(function(endInput)
-                    if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
-                        if changedConn then changedConn:Disconnect() changedConn = nil end
-                        if endedConn then endedConn:Disconnect() endedConn = nil end
-                        if not isDragging then
-                            if onClick then onClick() end
+                renderConn = RunService.RenderStepped:Connect(function()
+                    if isDragging and targetPos and DockHolder and DockHolder.Parent then
+                        if DockHolder.Position ~= targetPos then
+                            DockHolder.Position = targetPos
                         end
-                        dragStart = nil
+                    end
+                end)
+
+                endConn = UserInputService.InputEnded:Connect(function(endInput)
+                    if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
+                        local wasDrag = isDragging
+                        cleanupDrag()
+                        if not wasDrag and onClick then
+                            onClick()
+                        end
                         isDragging = false
                     end
+                end)
+
+                focusConn = UserInputService.WindowFocusReleased:Connect(function()
+                    cleanupDrag()
+                    isDragging = false
                 end)
             end
         end)
@@ -2730,6 +2792,7 @@ function Speed_Library:CreateWindow(Config)
         -- Automatic Culling of corner accent lines when scrolled outside column visible viewport
         local function SetupColumnCulling(column)
             local function updateCulling()
+                if not column.Visible or not column:IsDescendantOf(game) then return end
                 local colTop = column.AbsolutePosition.Y
                 local colBottom = colTop + column.AbsoluteSize.Y
                 for _, secHolder in ipairs(column:GetChildren()) do
@@ -2745,7 +2808,7 @@ function Speed_Library:CreateWindow(Config)
                                 if holder then
                                     holder.Visible = inView
                                 end
-                                for _, sub in ipairs(card:GetDescendants()) do
+                                for _, sub in ipairs(card:GetChildren()) do
                                     if sub.Name == "CornerLinesHolder" and sub ~= holder then
                                         sub.Visible = inView
                                     end
@@ -2757,7 +2820,6 @@ function Speed_Library:CreateWindow(Config)
             end
 
             column:GetPropertyChangedSignal("CanvasPosition"):Connect(updateCulling)
-            column:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateCulling)
             column:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateCulling)
             return updateCulling
         end
@@ -3704,22 +3766,28 @@ function Speed_Library:CreateWindow(Config)
                     UpdateFromVal(snapped)
                 end
 
+                local moveConn, endConn
                 TrackHolder.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         MoveTo(input.Position.X)
-                    end
-                end)
 
-                UserInputService.InputChanged:Connect(function(input)
-                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        MoveTo(input.Position.X)
-                    end
-                end)
+                        if moveConn then moveConn:Disconnect() moveConn = nil end
+                        if endConn then endConn:Disconnect() endConn = nil end
 
-                UserInputService.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        dragging = false
+                        moveConn = UserInputService.InputChanged:Connect(function(moveInput)
+                            if dragging and (moveInput.UserInputType == Enum.UserInputType.MouseMovement or moveInput.UserInputType == Enum.UserInputType.Touch) then
+                                MoveTo(moveInput.Position.X)
+                            end
+                        end)
+
+                        endConn = UserInputService.InputEnded:Connect(function(endInput)
+                            if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
+                                dragging = false
+                                if moveConn then moveConn:Disconnect() moveConn = nil end
+                                if endConn then endConn:Disconnect() endConn = nil end
+                            end
+                        end)
                     end
                 end)
 
