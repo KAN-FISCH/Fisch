@@ -1698,6 +1698,26 @@ function Speed_Library:CreateWindow(Config)
         Parent = CreditsBody
     })
 
+    ROGBtn.Activated:Connect(function()
+        CreditsPopup.Visible = false
+        SettingsPopup.Visible = false
+        ModalOverlay.Visible = false
+        if Tabs and Tabs.OpenROGLauncher then
+            Tabs:OpenROGLauncher()
+        elseif Speed_Library and Speed_Library.CreateROGLauncher then
+            Speed_Library:CreateROGLauncher({
+                Title = "ROG Armoury Crate",
+                AutoDetect = true,
+                OnLaunch = function()
+                    if Tabs and Tabs.SetVisible then Tabs:SetVisible(true) end
+                end,
+                OnClose = function()
+                    if Tabs and Tabs.SetVisible then Tabs:SetVisible(true) end
+                end
+            })
+        end
+    end)
+
     SettingsBtn.Activated:Connect(function()
         CreditsPopup.Visible = false
         SettingsPopup.Visible = true
