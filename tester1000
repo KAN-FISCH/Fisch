@@ -345,13 +345,13 @@ pcall(function()
     elseif readfile and isfile and isfile("NewFish5_Source/ShielD_UILib.lua") then
         Speed_Library = loadstring(readfile("NewFish5_Source/ShielD_UILib.lua"))()
     elseif game and game.HttpGet then
-        Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ckckckckck5"))()
+        Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ckckc2348"))()
     end
 end)
 if not Speed_Library then
     pcall(function()
         if game and game.HttpGet then
-            Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/FischTes/refs/heads/main/GUIENC.lua"))()
+            Speed_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/KAN-FISCH/Fisch/refs/heads/main/ckckc2348"))()
         end
     end)
 end
