@@ -1510,29 +1510,6 @@ function Speed_Library:CreateWindow(Config)
         TabsContainer.CanvasSize = UDim2.new(0, TabsLayout.AbsoluteContentSize.X + 20, 0, 0)
     end)
 
-    -- Active Tab Glowing Indicator Underline (ASUS ROG Neon Red Underline with Glow)
-    local TabIndicatorGlow = Custom:Create("Frame", {
-        BackgroundColor3 = Color3.fromRGB(255, 45, 75),
-        BackgroundTransparency = 0.55,
-        BorderSizePixel = 0,
-        Position = UDim2.new(0, 0, 1, -4),
-        Size = UDim2.new(0, 0, 0, 6),
-        ZIndex = 5,
-        Visible = false,
-        Name = "TabIndicatorGlow"
-    }, TabsContainer)
-    Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, TabIndicatorGlow)
-
-    local TabIndicator = Custom:Create("Frame", {
-        BackgroundColor3 = Color3.fromRGB(255, 45, 75),
-        BorderSizePixel = 0,
-        Position = UDim2.new(0, 0, 1, -2),
-        Size = UDim2.new(0, 0, 0, 2.5),
-        ZIndex = 6,
-        Visible = false,
-        Name = "TabIndicator"
-    }, TabsContainer)
-    Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, TabIndicator)
 
     -- ─────────────────────────────────────────────────────────────
     -- CONTENT AREA (2-Column Responsive Layout)
@@ -1798,13 +1775,20 @@ function Speed_Library:CreateWindow(Config)
             Name = "TabBtn_" .. TabName
         }, TabsContainer)
 
+        local TabContent = Custom:Create("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 1, -4),
+            Position = UDim2.new(0, 0, 0, 0),
+            Name = "TabContent"
+        }, TabBtn)
+
         local TabBtnLayout = Custom:Create("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
             VerticalAlignment = Enum.VerticalAlignment.Center,
             HorizontalAlignment = Enum.HorizontalAlignment.Center,
             Padding = UDim.new(0, 6),
             SortOrder = Enum.SortOrder.LayoutOrder
-        }, TabBtn)
+        }, TabContent)
 
         local TabIconImg = Custom:Create("ImageLabel", {
             Image = TabIcon,
@@ -1815,7 +1799,7 @@ function Speed_Library:CreateWindow(Config)
             ZIndex = 6,
             LayoutOrder = 1,
             Name = "TabIcon"
-        }, TabBtn)
+        }, TabContent)
 
         local TabLabel = Custom:Create("TextLabel", {
             Font = Enum.Font.GothamBold,
@@ -1829,7 +1813,32 @@ function Speed_Library:CreateWindow(Config)
             ZIndex = 6,
             LayoutOrder = 2,
             Name = "TabLabel"
+        }, TabContent)
+
+        -- Underline indicator centered directly under this tab button
+        local TabIndicatorGlow = Custom:Create("Frame", {
+            BackgroundColor3 = Color3.fromRGB(255, 45, 75),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, 0),
+            Size = UDim2.new(1, 4, 0, 5),
+            ZIndex = 5,
+            Name = "TabIndicatorGlow"
         }, TabBtn)
+        Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, TabIndicatorGlow)
+
+        local TabIndicator = Custom:Create("Frame", {
+            BackgroundColor3 = Color3.fromRGB(255, 45, 75),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -1),
+            Size = UDim2.new(1, -4, 0, 2.5),
+            ZIndex = 6,
+            Name = "TabIndicator"
+        }, TabBtn)
+        Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, TabIndicator)
 
         TabBtn.MouseEnter:Connect(function()
             if ActiveTabObj ~= TabObj then
@@ -1903,6 +1912,8 @@ function Speed_Library:CreateWindow(Config)
             Name = TabName,
             TabView = TabView,
             TabBtn = TabBtn,
+            TabIndicator = TabIndicator,
+            TabIndicatorGlow = TabIndicatorGlow,
             LeftColumn = LeftColumn,
             RightColumn = RightColumn,
             SectionCount = 0
@@ -1914,10 +1925,22 @@ function Speed_Library:CreateWindow(Config)
             -- Deactivate previous
             if ActiveTabObj then
                 ActiveTabObj.TabView.Visible = false
-                local prevIcon = ActiveTabObj.TabBtn:FindFirstChild("TabIcon")
-                local prevLbl = ActiveTabObj.TabBtn:FindFirstChild("TabLabel")
+                local prevContent = ActiveTabObj.TabBtn:FindFirstChild("TabContent")
+                local prevIcon = (prevContent and prevContent:FindFirstChild("TabIcon")) or ActiveTabObj.TabBtn:FindFirstChild("TabIcon")
+                local prevLbl = (prevContent and prevContent:FindFirstChild("TabLabel")) or ActiveTabObj.TabBtn:FindFirstChild("TabLabel")
                 if prevIcon then prevIcon.ImageColor3 = Color3.fromRGB(140, 150, 175) end
                 if prevLbl then prevLbl.TextColor3 = Color3.fromRGB(150, 160, 185) end
+                if ActiveTabObj.TabIndicator then
+                    TweenService:Create(ActiveTabObj.TabIndicator, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(0, 0, 0, 2.5)
+                    }):Play()
+                end
+                if ActiveTabObj.TabIndicatorGlow then
+                    TweenService:Create(ActiveTabObj.TabIndicatorGlow, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        BackgroundTransparency = 1
+                    }):Play()
+                end
             end
 
             -- Activate new
@@ -1926,27 +1949,17 @@ function Speed_Library:CreateWindow(Config)
             TabIconImg.ImageColor3 = Custom.AccentBright
             TabLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-            -- Animate neon underline indicator
-            TabIndicator.Visible = true
-            task.spawn(function()
-                task.wait(0.04)
-                pcall(function()
-                    local btnPosInTabs = TabBtn.AbsolutePosition.X - TabsContainer.AbsolutePosition.X + TabsContainer.CanvasPosition.X
-                    local targetWidth = TabBtn.AbsoluteSize.X
-                    if targetWidth <= 0 then
-                        targetWidth = btnWidth
-                    end
-                    TabIndicatorGlow.Visible = true
-                    TweenService:Create(TabIndicator, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Position = UDim2.new(0, btnPosInTabs, 1, -2),
-                        Size = UDim2.new(0, targetWidth, 0, 2.5)
-                    }):Play()
-                    TweenService:Create(TabIndicatorGlow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Position = UDim2.new(0, btnPosInTabs - 4, 1, -4),
-                        Size = UDim2.new(0, targetWidth + 8, 0, 6)
-                    }):Play()
-                end)
-            end)
+            -- Animate neon underline indicator directly under this tab
+            TabIndicator.Size = UDim2.new(0, 0, 0, 2.5)
+            TabIndicator.BackgroundTransparency = 0
+            TabIndicatorGlow.BackgroundTransparency = 0.55
+            TweenService:Create(TabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, -4, 0, 2.5)
+            }):Play()
+            TweenService:Create(TabIndicatorGlow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 4, 0, 5),
+                BackgroundTransparency = 0.45
+            }):Play()
         end
 
         TabBtn.Activated:Connect(ActivateTab)
