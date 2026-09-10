@@ -403,8 +403,11 @@ local function CreateOpenCloseButton()
             Name = "ChamferBox"
         })
 
-        if topColor and cardData.FillBase then
-            cardData.FillBase.BackgroundColor3 = topColor
+        if topColor and bottomColor then
+            cardData.TL_Fill.BackgroundColor3 = topColor
+            cardData.TR_Fill.BackgroundColor3 = topColor
+            cardData.BL_Fill.BackgroundColor3 = bottomColor
+            cardData.BR_Fill.BackgroundColor3 = bottomColor
         end
 
         -- Bottom Glowing Neon Slit (Signature ROG Slit)
@@ -1493,29 +1496,6 @@ function Speed_Library:CreateWindow(Config)
         ZIndex = 23,
         Parent = CreditsBody
     })
-
-    ROGBtn.Activated:Connect(function()
-        CreditsPopup.Visible = false
-        SettingsPopup.Visible = false
-        ModalOverlay.Visible = false
-        if Tabs and Tabs.OpenShieldLauncher then
-            Tabs:OpenShieldLauncher()
-        elseif Tabs and Tabs.OpenROGLauncher then
-            Tabs:OpenROGLauncher()
-        elseif Speed_Library and (Speed_Library.CreateShieldLauncher or Speed_Library.CreateROGLauncher) then
-            local launcherFn = Speed_Library.CreateShieldLauncher or Speed_Library.CreateROGLauncher
-            launcherFn(Speed_Library, {
-                Title = "Shield Armoury Crate",
-                AutoDetect = true,
-                OnLaunch = function()
-                    if Tabs and Tabs.SetVisible then Tabs:SetVisible(true) end
-                end,
-                OnClose = function()
-                    if Tabs and Tabs.SetVisible then Tabs:SetVisible(true) end
-                end
-            })
-        end
-    end)
 
     SettingsBtn.Activated:Connect(function()
         CreditsPopup.Visible = false
