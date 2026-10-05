@@ -1970,6 +1970,37 @@ function Speed_Library:CreateWindow(Config)
         Name = "GlobalUIScale"
     }, DropShadowHolder)
 
+    local isWindowTransitioning = false
+    local function SetWindowVisible(vis)
+        if isWindowTransitioning then return end
+        if vis == DropShadowHolder.Visible then return end
+
+        isWindowTransitioning = true
+        if vis then
+            DropShadowHolder.Size = SizeUi
+            DropShadowHolder.Visible = true
+            GlobalUIScale.Scale = 0.88
+            local openTween = TweenService:Create(GlobalUIScale, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Scale = 1
+            })
+            openTween.Completed:Connect(function()
+                GlobalUIScale.Scale = 1
+                isWindowTransitioning = false
+            end)
+            openTween:Play()
+        else
+            local closeTween = TweenService:Create(GlobalUIScale, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Scale = 0.88
+            })
+            closeTween.Completed:Connect(function()
+                DropShadowHolder.Visible = false
+                GlobalUIScale.Scale = 1
+                isWindowTransitioning = false
+            end)
+            closeTween:Play()
+        end
+    end
+
     local DropShadow = Custom:Create("ImageLabel", {
         Image = "rbxassetid://6015897843",
         ImageColor3 = Color3.fromRGB(0, 0, 0),
@@ -2211,19 +2242,7 @@ function Speed_Library:CreateWindow(Config)
     end)
 
     MinimizeBtn.Activated:Connect(function()
-        if MainCardData and MainCardData.SetFillTransparency then
-            MainCardData.SetFillTransparency(1, 0.18)
-            MainCardData.SetStrokeTransparency(1, 0.18)
-        end
-        TweenService:Create(DropShadowHolder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-        task.wait(0.18)
-        DropShadowHolder.Visible = false
-        DropShadowHolder.Size = SizeUi
-        Main.BackgroundTransparency = 1
-        if MainCardData and MainCardData.SetFillTransparency then
-            MainCardData.SetFillTransparency(0, 0)
-            MainCardData.SetStrokeTransparency(0, 0)
-        end
+        SetWindowVisible(false)
     end)
 
     -- 2. Resize / Maximize Button (↗)
@@ -2287,38 +2306,11 @@ function Speed_Library:CreateWindow(Config)
     end)
 
     CloseBtn.Activated:Connect(function()
-        if MainCardData and MainCardData.SetFillTransparency then
-            MainCardData.SetFillTransparency(1, 0.2)
-            MainCardData.SetStrokeTransparency(1, 0.2)
-        end
-        TweenService:Create(DropShadowHolder, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-        task.wait(0.2)
-        DropShadowHolder.Visible = false
-        DropShadowHolder.Size = SizeUi
-        Main.BackgroundTransparency = 1
-        if MainCardData and MainCardData.SetFillTransparency then
-            MainCardData.SetFillTransparency(0, 0)
-            MainCardData.SetStrokeTransparency(0, 0)
-        end
+        SetWindowVisible(false)
     end)
 
-    Speed_Library.ActiveWindow = Tabs
-
     GlobalOpenClose.Activated:Connect(function()
-        if DropShadowHolder then
-            DropShadowHolder.Visible = not DropShadowHolder.Visible
-            if DropShadowHolder.Visible then
-                DropShadowHolder.Size = UDim2.fromOffset(BaseWidth * 0.9, BaseHeight * 0.9)
-                TweenService:Create(DropShadowHolder, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                    Size = SizeUi
-                }):Play()
-                Main.BackgroundTransparency = 1
-                if MainCardData and MainCardData.SetFillTransparency then
-                    MainCardData.SetFillTransparency(0, 0)
-                    MainCardData.SetStrokeTransparency(0, 0)
-                end
-            end
-        end
+        SetWindowVisible(not DropShadowHolder.Visible)
     end)
 
     -- ─────────────────────────────────────────────────────────────
@@ -4222,23 +4214,14 @@ function Speed_Library:CreateWindow(Config)
     end)
 
     function Tabs:SetVisible(vis)
-        DropShadowHolder.Visible = vis
-        if vis then
-            DropShadowHolder.Size = UDim2.fromOffset(BaseWidth * 0.9, BaseHeight * 0.9)
-            TweenService:Create(DropShadowHolder, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                Size = SizeUi
-            }):Play()
-            Main.BackgroundTransparency = 1
-            if MainCardData and MainCardData.SetFillTransparency then
-                MainCardData.SetFillTransparency(0, 0)
-                MainCardData.SetStrokeTransparency(0, 0)
-            end
-        end
+        SetWindowVisible(vis)
     end
 
     function Tabs:Toggle()
-        Tabs:SetVisible(not DropShadowHolder.Visible)
+        SetWindowVisible(not DropShadowHolder.Visible)
     end
+
+    Speed_Library.ActiveWindow = Tabs
 
     function Tabs:OpenROGLauncher(rogConfig)
         rogConfig = rogConfig or {}
