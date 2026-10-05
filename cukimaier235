@@ -1970,34 +1970,27 @@ function Speed_Library:CreateWindow(Config)
         Name = "GlobalUIScale"
     }, DropShadowHolder)
 
+    local ActiveTabObj = nil
+    local isMaximized = false
     local isWindowTransitioning = false
     local function SetWindowVisible(vis)
         if isWindowTransitioning then return end
         if vis == DropShadowHolder.Visible then return end
 
-        isWindowTransitioning = true
-        if vis then
-            DropShadowHolder.Size = SizeUi
-            DropShadowHolder.Visible = true
-            GlobalUIScale.Scale = 0.88
-            local openTween = TweenService:Create(GlobalUIScale, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Scale = 1
-            })
-            openTween.Completed:Connect(function()
-                GlobalUIScale.Scale = 1
-                isWindowTransitioning = false
-            end)
-            openTween:Play()
+        if not vis then
+            -- Instant hide: 0 ms delay, eliminates layout thrashing & CPU freeze on close/minimize
+            DropShadowHolder.Visible = false
+            GlobalUIScale.Scale = 1
+            isWindowTransitioning = false
         else
-            local closeTween = TweenService:Create(GlobalUIScale, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                Scale = 0.88
-            })
-            closeTween.Completed:Connect(function()
-                DropShadowHolder.Visible = false
-                GlobalUIScale.Scale = 1
-                isWindowTransitioning = false
-            end)
-            closeTween:Play()
+            -- Instant open: 0 ms delay, ZERO UIScale tweening, ZERO render stalls!
+            DropShadowHolder.Size = isMaximized and UDim2.fromOffset(800, 500) or SizeUi
+            DropShadowHolder.Visible = true
+            GlobalUIScale.Scale = 1
+            isWindowTransitioning = false
+            if ActiveTabObj and ActiveTabObj.UpdateCulling then
+                pcall(ActiveTabObj.UpdateCulling)
+            end
         end
     end
 
@@ -2243,6 +2236,8 @@ function Speed_Library:CreateWindow(Config)
 
     MinimizeBtn.Activated:Connect(function()
         SetWindowVisible(false)
+        local onMin = Config.OnMinimize or Config.MinimizeCallback
+        if onMin then pcall(onMin) end
     end)
 
     -- 2. Resize / Maximize Button (↗)
@@ -2270,11 +2265,13 @@ function Speed_Library:CreateWindow(Config)
         ResizeLbl.TextColor3 = Color3.fromRGB(205, 220, 240)
     end)
 
-    local isMaximized = false
     ResizeToggleBtn.Activated:Connect(function()
         isMaximized = not isMaximized
         local targetSize = isMaximized and UDim2.fromOffset(800, 500) or SizeUi
-        TweenService:Create(DropShadowHolder, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = targetSize}):Play()
+        DropShadowHolder.Size = targetSize
+        if ActiveTabObj and ActiveTabObj.UpdateCulling then
+            pcall(ActiveTabObj.UpdateCulling)
+        end
     end)
 
     -- 3. Close / Silang Button (X)
@@ -2307,6 +2304,8 @@ function Speed_Library:CreateWindow(Config)
 
     CloseBtn.Activated:Connect(function()
         SetWindowVisible(false)
+        local onClose = Config.OnClose or Config.CloseCallback
+        if onClose then pcall(onClose) end
     end)
 
     GlobalOpenClose.Activated:Connect(function()
@@ -2585,7 +2584,7 @@ function Speed_Library:CreateWindow(Config)
     -- ─────────────────────────────────────────────────────────────
     local Tabs = {}
     local TabList = {}
-    local ActiveTabObj = nil
+    ActiveTabObj = nil
     local TabCount = 0
 
     -- Live Search Engine
@@ -2783,8 +2782,10 @@ function Speed_Library:CreateWindow(Config)
 
         -- Automatic Culling of corner accent lines when scrolled outside column visible viewport
         local function SetupColumnCulling(column)
+            local isPending = false
             local function updateCulling()
-                if not column.Visible or not column:IsDescendantOf(game) then return end
+                if isWindowTransitioning then return end
+                if not column.Visible or not column.Parent or not column.Parent.Visible or not column:IsDescendantOf(game) then return end
                 local colTop = column.AbsolutePosition.Y
                 local colBottom = colTop + column.AbsoluteSize.Y
                 for _, secHolder in ipairs(column:GetChildren()) do
@@ -2797,11 +2798,11 @@ function Speed_Library:CreateWindow(Config)
                                 local cBottom = cTop + card.AbsoluteSize.Y
                                 local inView = (cBottom >= colTop - 4) and (cTop <= colBottom + 4)
                                 local holder = card:FindFirstChild("CornerLinesHolder")
-                                if holder then
+                                if holder and holder.Visible ~= inView then
                                     holder.Visible = inView
                                 end
                                 for _, sub in ipairs(card:GetChildren()) do
-                                    if sub.Name == "CornerLinesHolder" and sub ~= holder then
+                                    if sub.Name == "CornerLinesHolder" and sub ~= holder and sub.Visible ~= inView then
                                         sub.Visible = inView
                                     end
                                 end
@@ -2811,8 +2812,18 @@ function Speed_Library:CreateWindow(Config)
                 end
             end
 
-            column:GetPropertyChangedSignal("CanvasPosition"):Connect(updateCulling)
-            column:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateCulling)
+            local function scheduleCulling()
+                if isPending or isWindowTransitioning then return end
+                isPending = true
+                task.defer(function()
+                    isPending = false
+                    if not isWindowTransitioning then
+                        updateCulling()
+                    end
+                end)
+            end
+
+            column:GetPropertyChangedSignal("CanvasPosition"):Connect(scheduleCulling)
             return updateCulling
         end
 
@@ -2827,7 +2838,11 @@ function Speed_Library:CreateWindow(Config)
             TabIndicatorGlow = TabIndicatorGlow,
             LeftColumn = LeftColumn,
             RightColumn = RightColumn,
-            SectionCount = 0
+            SectionCount = 0,
+            UpdateCulling = function()
+                pcall(updateLeftCulling)
+                pcall(updateRightCulling)
+            end
         }
 
         local function ActivateTab()
@@ -2974,12 +2989,14 @@ function Speed_Library:CreateWindow(Config)
                 }
             }, RightPill)
 
-            -- Keep pills snug against the title text width
-            TitleLbl:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                local halfW = TitleLbl.AbsoluteSize.X / 2
-                LeftPill.Position = UDim2.new(0.5, -(halfW + 10), 0.5, 0)
-                RightPill.Position = UDim2.new(0.5, (halfW + 10), 0.5, 0)
+            -- Keep pills snug against the title text width without property changed listener
+            local textWidth = 60
+            pcall(function()
+                textWidth = TextService:GetTextSize(SectionTitle, 13, Enum.Font.GothamBold, Vector2.new(1000, 24)).X
             end)
+            local halfW = textWidth / 2
+            LeftPill.Position = UDim2.new(0.5, -(halfW + 10), 0.5, 0)
+            RightPill.Position = UDim2.new(0.5, (halfW + 10), 0.5, 0)
 
             -- Container for Section Items
             local ItemsContainer = Custom:Create("Frame", {
