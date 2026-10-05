@@ -1971,39 +1971,25 @@ function Speed_Library:CreateWindow(Config)
     }, DropShadowHolder)
 
     local ActiveTabObj = nil
+    local isMaximized = false
     local isWindowTransitioning = false
     local function SetWindowVisible(vis)
         if isWindowTransitioning then return end
         if vis == DropShadowHolder.Visible then return end
 
         if not vis then
-            -- Instant hide eliminates layout thrashing & CPU freeze on close/minimize
+            -- Instant hide: 0 ms delay, eliminates layout thrashing & CPU freeze on close/minimize
             DropShadowHolder.Visible = false
             GlobalUIScale.Scale = 1
             isWindowTransitioning = false
         else
-            DropShadowHolder.Size = SizeUi
+            -- Instant open: 0 ms delay, ZERO UIScale tweening, ZERO render stalls!
+            DropShadowHolder.Size = isMaximized and UDim2.fromOffset(800, 500) or SizeUi
             DropShadowHolder.Visible = true
-            if Config.FastMode or Config.NoAnimation then
-                GlobalUIScale.Scale = 1
-                isWindowTransitioning = false
-                if ActiveTabObj and ActiveTabObj.UpdateCulling then
-                    pcall(ActiveTabObj.UpdateCulling)
-                end
-            else
-                isWindowTransitioning = true
-                GlobalUIScale.Scale = 0.96
-                local openTween = TweenService:Create(GlobalUIScale, TweenInfo.new(0.10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                    Scale = 1
-                })
-                openTween.Completed:Connect(function()
-                    GlobalUIScale.Scale = 1
-                    isWindowTransitioning = false
-                    if ActiveTabObj and ActiveTabObj.UpdateCulling then
-                        pcall(ActiveTabObj.UpdateCulling)
-                    end
-                end)
-                openTween:Play()
+            GlobalUIScale.Scale = 1
+            isWindowTransitioning = false
+            if ActiveTabObj and ActiveTabObj.UpdateCulling then
+                pcall(ActiveTabObj.UpdateCulling)
             end
         end
     end
@@ -2279,17 +2265,13 @@ function Speed_Library:CreateWindow(Config)
         ResizeLbl.TextColor3 = Color3.fromRGB(205, 220, 240)
     end)
 
-    local isMaximized = false
     ResizeToggleBtn.Activated:Connect(function()
         isMaximized = not isMaximized
         local targetSize = isMaximized and UDim2.fromOffset(800, 500) or SizeUi
-        local rTween = TweenService:Create(DropShadowHolder, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize})
-        rTween.Completed:Connect(function()
-            if ActiveTabObj and ActiveTabObj.UpdateCulling then
-                pcall(ActiveTabObj.UpdateCulling)
-            end
-        end)
-        rTween:Play()
+        DropShadowHolder.Size = targetSize
+        if ActiveTabObj and ActiveTabObj.UpdateCulling then
+            pcall(ActiveTabObj.UpdateCulling)
+        end
     end)
 
     -- 3. Close / Silang Button (X)
@@ -3007,12 +2989,14 @@ function Speed_Library:CreateWindow(Config)
                 }
             }, RightPill)
 
-            -- Keep pills snug against the title text width
-            TitleLbl:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                local halfW = TitleLbl.AbsoluteSize.X / 2
-                LeftPill.Position = UDim2.new(0.5, -(halfW + 10), 0.5, 0)
-                RightPill.Position = UDim2.new(0.5, (halfW + 10), 0.5, 0)
+            -- Keep pills snug against the title text width without property changed listener
+            local textWidth = 60
+            pcall(function()
+                textWidth = TextService:GetTextSize(SectionTitle, 13, Enum.Font.GothamBold, Vector2.new(1000, 24)).X
             end)
+            local halfW = textWidth / 2
+            LeftPill.Position = UDim2.new(0.5, -(halfW + 10), 0.5, 0)
+            RightPill.Position = UDim2.new(0.5, (halfW + 10), 0.5, 0)
 
             -- Container for Section Items
             local ItemsContainer = Custom:Create("Frame", {
