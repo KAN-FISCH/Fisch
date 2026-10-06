@@ -88,6 +88,15 @@ _G.Config = {
     AutoNukeEnabled = false,
     DeleteFishModel = false,
     DeletePlayer = false,
+    AutoEquipBait = false,
+    AutoMetronome = false,
+    AutoLullaby = false,
+    LullabyMode = "Rage (100 Hits)",
+    LullabyHitCount = 100,
+    LullabyMissCount = 0,
+    AutoTelescope = false,
+    SelectedLens = "Stellar Lens",
+    AutoCraftBattery = false,
 }
 
 _G.__var = {
